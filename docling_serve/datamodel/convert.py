@@ -352,6 +352,29 @@ class ConvertDocumentsOptions(BaseModel):
         ),
     ] = False
 
+    do_document_enhancement: Annotated[
+        bool,
+        Field(
+            description=(
+                "If enabled, apply document enhancement with OCR. "
+                "Boolean. Optional, defaults to false."
+            ),
+            examples=[False],
+        ),
+    ] = False
+
+    enable_character_encoding_fix: Annotated[
+        bool,
+        Field(
+            description=(
+                "If enabled, fix character encoding errors in text. "
+                "Only works when do_document_enhancement is True. "
+                "Boolean. Optional, defaults to false."
+            ),
+            examples=[False],
+        ),
+    ] = False
+
     picture_description_area_threshold: Annotated[
         float,
         Field(

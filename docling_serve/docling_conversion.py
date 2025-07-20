@@ -33,6 +33,7 @@ from docling.pipeline.vlm_pipeline import VlmPipeline
 from docling_core.types.doc import ImageRefMode
 
 from docling_serve.datamodel.convert import ConvertDocumentsOptions, ocr_factory
+from docling_serve.document_enhancement import DocumentProcessor
 from docling_serve.helper_functions import _to_list_of_strings
 from docling_serve.settings import docling_serve_settings
 
@@ -252,5 +253,24 @@ def convert_documents(
         max_file_size=docling_serve_settings.max_file_size,
         max_num_pages=docling_serve_settings.max_num_pages,
     )
+    
+    # Apply document enhancement if enabled
+    if options.do_document_enhancement:
+        processor = DocumentProcessor(
+            enable_formula_enhancement=options.do_formula_enrichment,
+            enable_character_encoding_fix=options.enable_character_encoding_fix
+        )
+        
+        # Process each result
+        def enhance_results():
+            for result in results:
+                try:
+                    enhanced_result = processor.process_conversion_result(result)
+                    yield enhanced_result
+                except Exception as e:
+                    _log.error(f"Error enhancing document: {e}")
+                    yield result  # Return original if enhancement fails
+        
+        return enhance_results()
     
     return results

@@ -225,8 +225,6 @@ def auto_set_return_as_file(
 def change_ocr_lang(ocr_engine):
     if ocr_engine == "easyocr":
         return "en,ar"
-    elif ocr_engine == "tesseract_cli":
-        return "eng,ara"
     elif ocr_engine == "tesseract":
         return "eng,ara"
     elif ocr_engine == "rapidocr":
@@ -295,6 +293,8 @@ def process_url(
     do_formula_enrichment,
     do_picture_classification,
     do_picture_description,
+    do_document_enhancement,
+    enable_character_encoding_fix,
 ):
     parameters = {
         "http_sources": [{"url": source} for source in input_sources.split(",")],
@@ -302,7 +302,7 @@ def process_url(
             "to_formats": to_formats,
             "image_export_mode": image_export_mode,
             "pipeline": pipeline,
-            "ocr": ocr,
+            "do_ocr": ocr,
             "force_ocr": force_ocr,
             "ocr_engine": ocr_engine,
             "ocr_lang": _to_list_of_strings(ocr_lang),
@@ -314,6 +314,8 @@ def process_url(
             "do_formula_enrichment": do_formula_enrichment,
             "do_picture_classification": do_picture_classification,
             "do_picture_description": do_picture_description,
+            "do_document_enhancement": do_document_enhancement,
+            "enable_character_encoding_fix": enable_character_encoding_fix,
         },
     }
     if (
@@ -367,6 +369,8 @@ def process_file(
     do_formula_enrichment,
     do_picture_classification,
     do_picture_description,
+    do_document_enhancement,
+    enable_character_encoding_fix,
 ):
     if not files or len(files) == 0:
         logger.error("No files provided.")
@@ -393,6 +397,8 @@ def process_file(
             "do_formula_enrichment": do_formula_enrichment,
             "do_picture_classification": do_picture_classification,
             "do_picture_description": do_picture_description,
+            "do_document_enhancement": do_document_enhancement,
+            "enable_character_encoding_fix": enable_character_encoding_fix,
         },
     }
 
@@ -641,6 +647,14 @@ with gr.Blocks(
                 do_picture_description = gr.Checkbox(
                     label="Enable picture description", value=False
                 )
+            with gr.Column():
+                do_document_enhancement = gr.Checkbox(
+                    label="Enable document enhancement (OCR)", value=False
+                )
+            with gr.Column():
+                enable_character_encoding_fix = gr.Checkbox(
+                    label="Fix character encoding errors", value=False
+                )
 
     # Task id output
     with gr.Row(visible=False) as task_id_output:
@@ -734,6 +748,8 @@ with gr.Blocks(
             do_formula_enrichment,
             do_picture_classification,
             do_picture_description,
+            do_document_enhancement,
+            enable_character_encoding_fix,
         ],
         outputs=[
             task_id_rendered,
@@ -821,6 +837,8 @@ with gr.Blocks(
             do_formula_enrichment,
             do_picture_classification,
             do_picture_description,
+            do_document_enhancement,
+            enable_character_encoding_fix,
         ],
         outputs=[
             task_id_rendered,

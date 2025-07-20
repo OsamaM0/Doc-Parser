@@ -1,6 +1,7 @@
 tesseract
 tesseract-devel
 tesseract-langpack-eng
+tesseract-langpack-ara
 leptonica-devel
 libglvnd-glx
 glib2

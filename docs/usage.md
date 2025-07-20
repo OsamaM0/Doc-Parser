@@ -13,7 +13,7 @@ On top of the source of file (see below), both endpoints support the same parame
 - `do_ocr` (bool): If enabled, the bitmap content will be processed using OCR. Defaults to `True`.
 - `image_export_mode`: Image export mode for the document (only in case of JSON, Markdown or HTML). Allowed values: embedded, placeholder, referenced. Optional, defaults to `embedded`.
 - `force_ocr` (bool): If enabled, replace any existing text with OCR-generated text over the full content. Defaults to `False`.
-- `ocr_engine` (str): OCR engine to use. Allowed values: `easyocr`, `tesserocr`, `tesseract`, `rapidocr`, `ocrmac`. Defaults to `easyocr`. To use the `tesserocr` engine, `tesserocr` must be installed where docling-serve is running: `pip install tesserocr`
+- `ocr_engine` (str): OCR engine to use. Allowed values: `easyocr`, `tesseract`, `rapidocr`, `ocrmac`. Defaults to `easyocr`. To use the `tesseract` engine, tesseract must be installed where docling-serve is running: `pip install tesserocr`
 - `ocr_lang` (List[str]): List of languages used by the OCR engine. Note that each OCR engine has different values for the language names. Defaults to empty.
 - `pdf_backend` (str): PDF backend to use. Allowed values: `pypdfium2`, `dlparse_v1`, `dlparse_v2`, `dlparse_v4`. Defaults to `dlparse_v4`.
 - `table_mode` (str): Table mode to use. Allowed values: `fast`, `accurate`. Defaults to `fast`.
@@ -25,6 +25,8 @@ On top of the source of file (see below), both endpoints support the same parame
 - `do_formula_enrichment` (bool): If enabled, perform formula OCR, return LaTeX code. Defaults to false.
 - `do_picture_classification` (bool): If enabled, classify pictures in documents. Defaults to false.
 - `do_picture_description` (bool): If enabled, describe pictures in documents. Defaults to false.
+- `do_document_enhancement` (bool): If enabled, apply document enhancement with OCR. Defaults to false.
+- `enable_character_encoding_fix` (bool): If enabled, fix character encoding errors in text. Only works when do_document_enhancement is True. Defaults to false.
 - `picture_description_area_threshold` (float): Minimum percentage of the area for a picture to be processed with the models. Defaults to 0.05.
 - `picture_description_local` (dict): Options for running a local vision-language model in the picture description. The parameters refer to a model hosted on Hugging Face. This parameter is mutually exclusive with picture_description_api.
 - `picture_description_api` (dict): API details for using a vision-language model in the picture description. This parameter is mutually exclusive with picture_description_local.
