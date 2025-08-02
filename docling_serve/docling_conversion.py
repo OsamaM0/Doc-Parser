@@ -35,6 +35,7 @@ from docling_core.types.doc import ImageRefMode
 from docling_serve.datamodel.convert import ConvertDocumentsOptions, ocr_factory
 from docling_serve.document_enhancement import DocumentProcessor
 from docling_serve.helper_functions import _to_list_of_strings
+from docling_serve.picture_annotation import PictureAnnotationService
 from docling_serve.settings import docling_serve_settings
 
 _log = logging.getLogger(__name__)
@@ -254,6 +255,14 @@ def convert_documents(
         max_num_pages=docling_serve_settings.max_num_pages,
     )
     
+    # Apply picture annotation if enabled
+    annotation_service = None
+    if options.picture_annotation:
+        try:
+            annotation_service = PictureAnnotationService(options.picture_annotation)
+        except Exception as e:
+            _log.error(f"Failed to initialize picture annotation service: {e}")
+    
     # Apply document enhancement if enabled
     if options.do_document_enhancement:
         processor = DocumentProcessor(
@@ -266,11 +275,67 @@ def convert_documents(
             for result in results:
                 try:
                     enhanced_result = processor.process_conversion_result(result)
+                    
+                    # Apply picture annotation if service is available
+                    if annotation_service:
+                        enhanced_result = _apply_picture_annotation(enhanced_result, annotation_service)
+                    
                     yield enhanced_result
                 except Exception as e:
                     _log.error(f"Error enhancing document: {e}")
                     yield result  # Return original if enhancement fails
         
         return enhance_results()
+    elif annotation_service:
+        # Only apply picture annotation without document enhancement
+        def annotate_results():
+            for result in results:
+                try:
+                    annotated_result = _apply_picture_annotation(result, annotation_service)
+                    yield annotated_result
+                except Exception as e:
+                    _log.error(f"Error annotating pictures: {e}")
+                    yield result
+        
+        return annotate_results()
     
     return results
+
+
+def _apply_picture_annotation(conv_result: ConversionResult, annotation_service: PictureAnnotationService) -> ConversionResult:
+    """Apply picture annotation to a conversion result."""
+    if not conv_result.document:
+        return conv_result
+    
+    from docling_core.types.doc import PictureItem
+    from docling_core.types.doc.document import PictureDescriptionData
+    
+    for element, _level in conv_result.document.iterate_items():
+        if isinstance(element, PictureItem):
+            try:
+                # Get the image
+                image = element.get_image(conv_result.document)
+                if image:
+                    # Annotate the image
+                    annotation_result = annotation_service.annotate_image(image)
+                    
+                    if annotation_result.text and not annotation_result.error:
+                        # Add annotation to the picture element
+                        if not hasattr(element, 'annotations') or element.annotations is None:
+                            element.annotations = []
+                        
+                        element.annotations.append(
+                            PictureDescriptionData(
+                                text=annotation_result.text,
+                                provenance=annotation_result.provenance
+                            )
+                        )
+                        _log.info(f"Added annotation to picture: {annotation_result.text[:100]}...")
+                    elif annotation_result.error:
+                        _log.warning(f"Failed to annotate picture: {annotation_result.error}")
+                        
+            except Exception as e:
+                _log.error(f"Error processing picture annotation: {e}")
+                continue
+    
+    return conv_result

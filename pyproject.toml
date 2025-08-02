@@ -47,6 +47,7 @@ dependencies = [
     "uvicorn[standard]>=0.29.0,<1.0.0",
     "websockets~=14.0",
     "scalar-fastapi>=1.0.3",
+    "openai>=1.0.0",  # Add OpenAI SDK for RunPod and OpenAI models
 ]
 
 [project.optional-dependencies]

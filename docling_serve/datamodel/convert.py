@@ -1,4 +1,5 @@
 # Define the input options for the API
+from enum import Enum
 from typing import Annotated, Any, Optional
 
 from pydantic import AnyUrl, BaseModel, Field, model_validator
@@ -109,6 +110,105 @@ class PictureDescriptionApi(BaseModel):
             ],
         ),
     ] = "Describe this image in a few sentences."
+
+
+class PictureAnnotationModelType(str, Enum):
+    """Available picture annotation model types."""
+    LOCAL = "local"
+    RUNPOD = "runpod"
+    OPENAI = "openai"
+
+
+class RunPodAnnotationConfig(BaseModel):
+    """Configuration for RunPod annotation model."""
+    api_key: Annotated[
+        str,
+        Field(
+            description="RunPod API key. Can be provided via RUNPOD_API_KEY environment variable.",
+        ),
+    ]
+    worker_id: Annotated[
+        str,
+        Field(
+            description="RunPod worker ID. Can be provided via RUNPOD_WORKER environment variable.",
+        ),
+    ]
+    model: Annotated[
+        str,
+        Field(
+            description="Model name to use.",
+            examples=["Qwen/Qwen2.5-VL-3B-Instruct"],
+        ),
+    ] = "Qwen/Qwen2.5-VL-3B-Instruct"
+    prompt: Annotated[
+        str,
+        Field(
+            description="Prompt for image annotation.",
+        ),
+    ] = "اوصفلي الصورة دي وصف رياضي دقيق جداً جداً وخليك دقيق لاكتر درجه ممكنه"
+    temperature: Annotated[
+        float,
+        Field(description="Temperature for model inference.", ge=0.0, le=2.0),
+    ] = 0.6
+
+
+class OpenAIAnnotationConfig(BaseModel):
+    """Configuration for OpenAI annotation model."""
+    api_key: Annotated[
+        str,
+        Field(
+            description="OpenAI API key. Can be provided via OPENAI_API_KEY environment variable.",
+        ),
+    ]
+    model: Annotated[
+        str,
+        Field(
+            description="OpenAI model to use for image annotation.",
+            examples=["gpt-4-vision-preview", "gpt-4o"],
+        ),
+    ] = "gpt-4-vision-preview"
+    prompt: Annotated[
+        str,
+        Field(
+            description="Prompt for image annotation.",
+        ),
+    ] = "Describe this image in detail with mathematical precision."
+    temperature: Annotated[
+        float,
+        Field(description="Temperature for model inference.", ge=0.0, le=2.0),
+    ] = 0.6
+
+
+class PictureAnnotationOptions(BaseModel):
+    """Options for picture annotation using various models."""
+    model_type: Annotated[
+        PictureAnnotationModelType,
+        Field(
+            description="Type of model to use for picture annotation.",
+        ),
+    ] = PictureAnnotationModelType.LOCAL
+    
+    runpod_config: Annotated[
+        Optional[RunPodAnnotationConfig],
+        Field(
+            description="Configuration for RunPod model. Required when model_type is 'runpod'.",
+        ),
+    ] = None
+    
+    openai_config: Annotated[
+        Optional[OpenAIAnnotationConfig],
+        Field(
+            description="Configuration for OpenAI model. Required when model_type is 'openai'.",
+        ),
+    ] = None
+
+    @model_validator(mode="after")
+    def validate_model_config(self) -> Self:
+        if self.model_type == PictureAnnotationModelType.RUNPOD and self.runpod_config is None:
+            raise ValueError("runpod_config is required when model_type is 'runpod'")
+        if self.model_type == PictureAnnotationModelType.OPENAI and self.openai_config is None:
+            raise ValueError("openai_config is required when model_type is 'openai'")
+        return self
 
 
 class ConvertDocumentsOptions(BaseModel):
@@ -321,7 +421,7 @@ class ConvertDocumentsOptions(BaseModel):
 
     do_formula_enrichment: Annotated[
         bool,
-        Field(
+            Field(
             description=(
                 "If enabled, perform formula OCR, return LaTeX code. "
                 "Boolean. Optional, defaults to false."
@@ -404,6 +504,13 @@ class ConvertDocumentsOptions(BaseModel):
                     params={"model": "granite3.2-vision:2b"},
                 )
             ],
+        ),
+    ] = None
+
+    picture_annotation: Annotated[
+        Optional[PictureAnnotationOptions],
+        Field(
+            description="Options for picture annotation using various models.",
         ),
     ] = None
 

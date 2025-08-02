@@ -58,6 +58,7 @@ from docling_serve.engines.base_orchestrator import TaskNotFoundError
 from docling_serve.helper_functions import FormDepends
 from docling_serve.settings import docling_serve_settings
 from docling_serve.storage import get_scratch
+import os
 
 
 # Set up custom logging as we'll be intermixes with FastAPI/Uvicorn's logging
@@ -76,6 +77,7 @@ class ColoredLogFormatter(logging.Formatter):
         record.levelname = f"{color}{record.levelname}{self.RESET_CODE}"
         return super().format(record)
 
+os.environ["use_gpu"] = "false"  # Force CPU usage
 
 logging.basicConfig(
     level=logging.INFO,  # Set the logging level

@@ -73,7 +73,7 @@ class OCREnhancer:
             lines = []
             if predictions:
                 for line in predictions[0].text_lines:
-                    if line.confidence > 0.5:
+                    if line.confidence > 0.75:
                         lines.append(line.text)
 
             enhanced_text = ' '.join(lines).strip()

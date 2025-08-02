@@ -320,6 +320,59 @@ Example URLs are:
 
 Note that when using `picture_description_api`, the server must be launched with `DOCLING_SERVE_ENABLE_REMOTE_SERVICES=true`.
 
+### Picture annotation options
+
+When picture annotation is activated, users can choose between different models for annotating images in documents:
+
+#### Local Model (Default)
+Uses the built-in local vision-language model.
+
+#### RunPod Model
+Uses a model hosted on RunPod with OpenAI-compatible API. Configuration:
+
+```jsonc
+{
+  "picture_annotation": {
+    "model_type": "runpod",
+    "runpod_config": {
+      "api_key": "your_runpod_api_key",  // Can also be set via RUNPOD_API_KEY env var
+      "worker_id": "your_worker_id",     // Can also be set via RUNPOD_WORKER env var  
+      "model": "Qwen/Qwen2.5-VL-3B-Instruct",  // Can also be set via RUNPOD_MODEL env var
+      "prompt": "اوصفلي الصورة دي وصف رياضي دقيق جداً جداً وخليك دقيق لاكتر درجه ممكنه",
+      "temperature": 0.6
+    }
+  }
+}
+```
+
+#### OpenAI Model  
+Uses OpenAI's vision models like GPT-4V. Configuration:
+
+```jsonc
+{
+  "picture_annotation": {
+    "model_type": "openai", 
+    "openai_config": {
+      "api_key": "your_openai_api_key",  // Can also be set via OPENAI_API_KEY env var
+      "model": "gpt-4-vision-preview",
+      "prompt": "Describe this image in detail with mathematical precision.",
+      "temperature": 0.6
+    }
+  }
+}
+```
+
+#### Environment Variables
+
+For convenience, you can set these environment variables:
+
+- `RUNPOD_API_KEY`: Your RunPod API key
+- `RUNPOD_WORKER`: Your RunPod worker ID  
+- `RUNPOD_MODEL`: Model name to use (default: "Qwen/Qwen2.5-VL-3B-Instruct")
+- `OPENAI_API_KEY`: Your OpenAI API key
+
+When these are set, you can use simplified configurations or omit the config entirely and just specify the model type.
+
 ## Response format
 
 The response can be a JSON Document or a File.

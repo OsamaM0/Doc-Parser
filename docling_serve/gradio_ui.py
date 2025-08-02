@@ -295,7 +295,51 @@ def process_url(
     do_picture_description,
     do_document_enhancement,
     enable_character_encoding_fix,
+    # Add new parameters for picture annotation
+    enable_picture_annotation,
+    annotation_model_type,
+    runpod_api_key,
+    runpod_worker,
+    runpod_model,
+    runpod_prompt,
+    openai_api_key,
+    openai_model,
+    openai_prompt,
 ):
+    # Build picture annotation options
+    picture_annotation = None
+    if enable_picture_annotation:
+        from docling_serve.datamodel.convert import (
+            PictureAnnotationOptions,
+            PictureAnnotationModelType,
+            RunPodAnnotationConfig,
+            OpenAIAnnotationConfig,
+        )
+
+        if annotation_model_type == "runpod":
+            picture_annotation = PictureAnnotationOptions(
+                model_type=PictureAnnotationModelType.RUNPOD,
+                runpod_config=RunPodAnnotationConfig(
+                    api_key=runpod_api_key,
+                    worker_id=runpod_worker,
+                    model=runpod_model,
+                    prompt=runpod_prompt,
+                ),
+            )
+        elif annotation_model_type == "openai":
+            picture_annotation = PictureAnnotationOptions(
+                model_type=PictureAnnotationModelType.OPENAI,
+                openai_config=OpenAIAnnotationConfig(
+                    api_key=openai_api_key,
+                    model=openai_model,
+                    prompt=openai_prompt,
+                ),
+            )
+        else:
+            picture_annotation = PictureAnnotationOptions(
+                model_type=PictureAnnotationModelType.LOCAL
+            )
+
     parameters = {
         "http_sources": [{"url": source} for source in input_sources.split(",")],
         "options": {
@@ -316,6 +360,9 @@ def process_url(
             "do_picture_description": do_picture_description,
             "do_document_enhancement": do_document_enhancement,
             "enable_character_encoding_fix": enable_character_encoding_fix,
+            "picture_annotation": picture_annotation.model_dump()
+            if picture_annotation
+            else None,
         },
     }
     if (
@@ -371,10 +418,51 @@ def process_file(
     do_picture_description,
     do_document_enhancement,
     enable_character_encoding_fix,
+    # Add new parameters for picture annotation
+    enable_picture_annotation,
+    annotation_model_type,
+    runpod_api_key,
+    runpod_worker,
+    runpod_model,
+    runpod_prompt,
+    openai_api_key,
+    openai_model,
+    openai_prompt,
 ):
-    if not files or len(files) == 0:
-        logger.error("No files provided.")
-        raise gr.Error("No files provided.", print_exception=False)
+    # Similar logic as process_url for building picture_annotation options
+    picture_annotation = None
+    if enable_picture_annotation:
+        from docling_serve.datamodel.convert import (
+            PictureAnnotationOptions,
+            PictureAnnotationModelType,
+            RunPodAnnotationConfig,
+            OpenAIAnnotationConfig,
+        )
+
+        if annotation_model_type == "runpod":
+            picture_annotation = PictureAnnotationOptions(
+                model_type=PictureAnnotationModelType.RUNPOD,
+                runpod_config=RunPodAnnotationConfig(
+                    api_key=runpod_api_key,
+                    worker_id=runpod_worker,
+                    model=runpod_model,
+                    prompt=runpod_prompt,
+                ),
+            )
+        elif annotation_model_type == "openai":
+            picture_annotation = PictureAnnotationOptions(
+                model_type=PictureAnnotationModelType.OPENAI,
+                openai_config=OpenAIAnnotationConfig(
+                    api_key=openai_api_key,
+                    model=openai_model,
+                    prompt=openai_prompt,
+                ),
+            )
+        else:
+            picture_annotation = PictureAnnotationOptions(
+                model_type=PictureAnnotationModelType.LOCAL
+            )
+
     files_data = [
         {"base64_string": file_to_base64(file), "filename": file.name} for file in files
     ]
@@ -399,6 +487,9 @@ def process_file(
             "do_picture_description": do_picture_description,
             "do_document_enhancement": do_document_enhancement,
             "enable_character_encoding_fix": enable_character_encoding_fix,
+            "picture_annotation": picture_annotation.model_dump()
+            if picture_annotation
+            else None,
         },
     }
 
@@ -656,6 +747,73 @@ with gr.Blocks(
                     label="Fix character encoding errors", value=False
                 )
 
+        # Picture Annotation Section
+        with gr.Accordion("Picture Annotation", open=False):
+            enable_picture_annotation = gr.Checkbox(
+                label="Enable Picture Annotation", value=False
+            )
+
+            annotation_model_type = gr.Radio(
+                [
+                    ("Local Model", "local"),
+                    ("RunPod Model", "runpod"),
+                    ("OpenAI Model", "openai"),
+                ],
+                label="Annotation Model Type",
+                value="local",
+            )
+
+            # RunPod Configuration
+            with gr.Group(visible=False) as runpod_config:
+                gr.Markdown("### RunPod Configuration")
+                runpod_api_key = gr.Textbox(
+                    label="RunPod API Key",
+                    type="password",
+                    placeholder="Enter RunPod API key or set RUNPOD_API_KEY env var"
+                )
+                runpod_worker = gr.Textbox(
+                    label="RunPod Worker ID",
+                    placeholder="Enter worker ID or set RUNPOD_WORKER env var"
+                )
+                runpod_model = gr.Textbox(
+                    label="Model Name",
+                    value="Qwen/Qwen2.5-VL-3B-Instruct",
+                )
+                runpod_prompt = gr.Textbox(
+                    label="Prompt",
+                    value="اوصفلي الصورة دي وصف رياضي دقيق جداً جداً وخليك دقيق لاكتر درجه ممكنه",
+                    lines=2,
+                )
+
+            # OpenAI Configuration
+            with gr.Group(visible=False) as openai_config:
+                gr.Markdown("### OpenAI Configuration")
+                openai_api_key = gr.Textbox(
+                    label="OpenAI API Key",
+                    type="password",
+                    placeholder="Enter OpenAI API key or set OPENAI_API_KEY env var"
+                )
+                openai_model = gr.Textbox(
+                    label="Model Name",
+                    value="gpt-4-vision-preview",
+                )
+                openai_prompt = gr.Textbox(
+                    label="Prompt",
+                    value="Describe this image in detail with mathematical precision.",
+                    lines=2,
+                )
+
+            def update_config_visibility(model_type):
+                runpod_visible = model_type == "runpod"
+                openai_visible = model_type == "openai"
+                return gr.Group(visible=runpod_visible), gr.Group(visible=openai_visible)
+
+            annotation_model_type.change(
+                update_config_visibility,
+                inputs=[annotation_model_type],
+                outputs=[runpod_config, openai_config]
+            )
+
     # Task id output
     with gr.Row(visible=False) as task_id_output:
         task_id_rendered = gr.Textbox(label="Task id", interactive=False)
@@ -750,6 +908,16 @@ with gr.Blocks(
             do_picture_description,
             do_document_enhancement,
             enable_character_encoding_fix,
+            # Add new inputs
+            enable_picture_annotation,
+            annotation_model_type,
+            runpod_api_key,
+            runpod_worker,
+            runpod_model,
+            runpod_prompt,
+            openai_api_key,
+            openai_model,
+            openai_prompt,
         ],
         outputs=[
             task_id_rendered,
@@ -839,6 +1007,16 @@ with gr.Blocks(
             do_picture_description,
             do_document_enhancement,
             enable_character_encoding_fix,
+            # Add new inputs
+            enable_picture_annotation,
+            annotation_model_type,
+            runpod_api_key,
+            runpod_worker,
+            runpod_model,
+            runpod_prompt,
+            openai_api_key,
+            openai_model,
+            openai_prompt,
         ],
         outputs=[
             task_id_rendered,
