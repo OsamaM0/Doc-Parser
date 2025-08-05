@@ -49,7 +49,7 @@ RUN --mount=from=ghcr.io/astral-sh/uv:0.7.19,source=/uv,target=/bin/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     umask 002 && \
     UV_SYNC_ARGS="--frozen --no-install-project --no-dev --all-extras" && \
-    uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-extra flash-attn
+    uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS}
 
 ARG MODELS_LIST="layout tableformer picture_classifier easyocr"
 

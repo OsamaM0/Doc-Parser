@@ -129,7 +129,7 @@ conflicts = [
     { group = "rocm" },
   ],
 ]
-environments = ["sys_platform != 'darwin' or platform_machine != 'x86_64'"]
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
 override-dependencies = [
   "urllib3~=2.0"
 ]
