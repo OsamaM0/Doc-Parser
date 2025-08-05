@@ -39,7 +39,10 @@ ENV \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PROJECT_ENVIRONMENT=/opt/app-root \
-    DOCLING_SERVE_ARTIFACTS_PATH=/opt/app-root/src/.cache/docling/models
+    DOCLING_SERVE_ARTIFACTS_PATH=/opt/app-root/src/.cache/docling/models \
+    UV_PROJECT_ENVIRONMENT=/opt/app-root/src/.cache/uv/env
+
+RUN mkdir -p /opt/app-root/src/.cache/uv/env
 
 ARG UV_SYNC_EXTRA_ARGS="--no-group pypi --group cu128"
 
