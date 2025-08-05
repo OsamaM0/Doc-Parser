@@ -40,19 +40,16 @@ ENV \
     UV_PROJECT_ENVIRONMENT=/opt/app-root \
     DOCLING_SERVE_ARTIFACTS_PATH=/opt/app-root/src/.cache/docling/models
 
-ARG UV_SYNC_EXTRA_ARGS="--no-group pypi --group cu128"
+ARG UV_SYNC_EXTRA_ARGS="--no-group pypi --group cu124 --no-extra flash-attn"
 
 RUN --mount=from=ghcr.io/astral-sh/uv:0.7.13,source=/uv,target=/bin/uv \
     --mount=type=cache,target=/opt/app-root/src/.cache/uv,uid=1001 \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     umask 002 && \
-    echo "Building with GPU support - UV_SYNC_EXTRA_ARGS: ${UV_SYNC_EXTRA_ARGS}" && \
+    echo "Building with GPU support (CUDA 12.4) - UV_SYNC_EXTRA_ARGS: ${UV_SYNC_EXTRA_ARGS}" && \
     UV_SYNC_ARGS="--frozen --no-install-project --no-dev --all-extras" && \
-    # First install without flash-attn to avoid build issues \
-    uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-extra flash-attn && \
-    # Then install flash-attn with special configuration \
-    FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-build-isolation-package=flash-attn
+    uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS}
 
 ARG MODELS_LIST="layout tableformer picture_classifier easyocr"
 
