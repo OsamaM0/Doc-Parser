@@ -40,16 +40,16 @@ ENV \
     UV_PROJECT_ENVIRONMENT=/opt/app-root \
     DOCLING_SERVE_ARTIFACTS_PATH=/opt/app-root/src/.cache/docling/models
 
-ARG UV_SYNC_EXTRA_ARGS="--no-group pypi --group cu124 --no-extra flash-attn"
+ARG UV_SYNC_EXTRA_ARGS=""
 
-RUN --mount=from=ghcr.io/astral-sh/uv:0.7.13,source=/uv,target=/bin/uv \
+RUN --mount=from=ghcr.io/astral-sh/uv:0.7.19,source=/uv,target=/bin/uv \
     --mount=type=cache,target=/opt/app-root/src/.cache/uv,uid=1001 \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     umask 002 && \
-    echo "Building with GPU support (CUDA 12.4) - UV_SYNC_EXTRA_ARGS: ${UV_SYNC_EXTRA_ARGS}" && \
     UV_SYNC_ARGS="--frozen --no-install-project --no-dev --all-extras" && \
-    uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS}
+    uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-extra flash-attn && \
+    FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-build-isolation-package=flash-attn
 
 ARG MODELS_LIST="layout tableformer picture_classifier easyocr"
 
@@ -61,13 +61,11 @@ RUN echo "Downloading models..." && \
     chmod -R g=u ${DOCLING_SERVE_ARTIFACTS_PATH}
 
 COPY --chown=1001:0 ./docling_serve ./docling_serve
-RUN --mount=from=ghcr.io/astral-sh/uv:0.7.13,source=/uv,target=/bin/uv \
+RUN --mount=from=ghcr.io/astral-sh/uv:0.7.19,source=/uv,target=/bin/uv \
     --mount=type=cache,target=/opt/app-root/src/.cache/uv,uid=1001 \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    umask 002 && \
-    echo "Final sync with UV_SYNC_EXTRA_ARGS: ${UV_SYNC_EXTRA_ARGS}" && \
-    uv sync --frozen --no-dev --all-extras ${UV_SYNC_EXTRA_ARGS}
+    umask 002 && uv sync --frozen --no-dev --all-extras ${UV_SYNC_EXTRA_ARGS}
 
 EXPOSE 5001
 
