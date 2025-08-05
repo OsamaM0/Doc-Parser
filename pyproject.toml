@@ -33,19 +33,21 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "docling~=2.38",
-    "docling-core>=2.44.1",
-    "docling-jobkit[kfp,vlm]~=1.2",
-    "fastapi[standard]~=0.115",
-    "httpx~=0.28",
-    "pydantic~=2.10",
-    "pydantic-settings~=2.4",
-    "python-multipart>=0.0.14,<0.1.0",
-    "typer~=0.12",
-    "uvicorn[standard]>=0.29.0,<1.0.0",
-    "websockets~=14.0",
-    "scalar-fastapi>=1.0.3",
-    "docling-mcp>=1.0.0",
+  "docling~=2.38",
+  "docling-core>=2.44.1",
+  "docling-jobkit[kfp,vlm]~=1.2",
+  "fastapi[standard]~=0.115",
+  "httpx~=0.28",
+  "pydantic~=2.10",
+  "pydantic-settings~=2.4",
+  "python-multipart>=0.0.14,<0.1.0",
+  "typer~=0.12",
+  "uvicorn[standard]>=0.29.0,<1.0.0",
+  "websockets~=14.0",
+  "scalar-fastapi>=1.0.3",
+  "docling-mcp>=1.0.0",
+  "openai==1.97.0",
+  "surya-ocr==0.14.6"
 ]
 
 [project.optional-dependencies]
@@ -66,14 +68,21 @@ flash-attn = [
 
 [dependency-groups]
 dev = [
-    "asgi-lifespan~=2.0",
-    "mypy~=1.11",
-    "pre-commit-uv~=4.1",
-    "pytest~=8.3",
-    "pytest-asyncio~=0.24",
-    "pytest-check~=2.4",
-    "python-semantic-release~=7.32",
-    "ruff>=0.9.6",
+    "docling[vlm]~=2.38",
+    "docling-core>=2.32.0",
+    "mlx-vlm~=0.1.12; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "fastapi[standard]~=0.115",
+    "httpx~=0.28",
+    "kfp[kubernetes]>=2.10.0",
+    "pydantic~=2.10",
+    "pydantic-settings~=2.4",
+    "python-multipart>=0.0.14,<0.1.0",
+    "typer~=0.12",
+    "uvicorn[standard]>=0.29.0,<1.0.0",
+    "websockets~=14.0",
+    "scalar-fastapi>=1.0.3",
+    "openai==1.97.0",
+    "surya-ocr==0.14.6"
 ]
 
 pypi = [
