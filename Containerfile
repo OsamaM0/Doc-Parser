@@ -17,7 +17,8 @@ RUN --mount=type=bind,source=os-packages.txt,target=/tmp/os-packages.txt \
     dnf -y clean all && \
     rm -rf /var/cache/dnf
 
-RUN /usr/bin/fix-permissions /opt/app-root/src/.cache
+RUN mkdir -p /opt/app-root/src/.cache \
+    && /usr/bin/fix-permissions /opt/app-root/src/.cache
 
 ENV TESSDATA_PREFIX=/usr/share/tesseract/tessdata/
 
@@ -49,7 +50,7 @@ RUN --mount=from=ghcr.io/astral-sh/uv:0.7.19,source=/uv,target=/bin/uv \
     umask 002 && \
     UV_SYNC_ARGS="--frozen --no-install-project --no-dev --all-extras" && \
     uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-extra flash-attn
-    
+
 ARG MODELS_LIST="layout tableformer picture_classifier easyocr"
 
 RUN echo "Downloading models..." && \
