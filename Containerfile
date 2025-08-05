@@ -48,9 +48,24 @@ RUN --mount=from=ghcr.io/astral-sh/uv:0.7.13,source=/uv,target=/bin/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     umask 002 && \
     UV_SYNC_ARGS="--frozen --no-install-project --no-dev --all-extras" && \
+    # Auto-detect environment and set appropriate UV_SYNC_EXTRA_ARGS if not provided \
+    if [ -z "${UV_SYNC_EXTRA_ARGS}" ]; then \
+        # Check if we have NVIDIA GPU support \
+        if nvidia-smi >/dev/null 2>&1; then \
+            echo "NVIDIA GPU detected, using CUDA 12.8 configuration" && \
+            UV_SYNC_EXTRA_ARGS="--no-group pypi --group cu128"; \
+        else \
+            echo "No NVIDIA GPU detected, using CPU configuration" && \
+            UV_SYNC_EXTRA_ARGS="--no-group pypi --group cpu --no-extra flash-attn"; \
+        fi; \
+    fi && \
+    echo "Using UV_SYNC_EXTRA_ARGS: ${UV_SYNC_EXTRA_ARGS}" && \
+    # Handle flash-attn installation based on configuration \
     if echo "${UV_SYNC_EXTRA_ARGS}" | grep -q "no-extra flash-attn"; then \
+        echo "Installing without flash-attn" && \
         uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS}; \
     else \
+        echo "Installing with flash-attn (GPU configuration)" && \
         uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-extra flash-attn && \
         FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-build-isolation-package=flash-attn; \
     fi
@@ -69,7 +84,17 @@ RUN --mount=from=ghcr.io/astral-sh/uv:0.7.13,source=/uv,target=/bin/uv \
     --mount=type=cache,target=/opt/app-root/src/.cache/uv,uid=1001 \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    umask 002 && uv sync --frozen --no-dev --all-extras ${UV_SYNC_EXTRA_ARGS}
+    umask 002 && \
+    # Auto-detect environment again for final sync \
+    if [ -z "${UV_SYNC_EXTRA_ARGS}" ]; then \
+        if nvidia-smi >/dev/null 2>&1; then \
+            UV_SYNC_EXTRA_ARGS="--no-group pypi --group cu128"; \
+        else \
+            UV_SYNC_EXTRA_ARGS="--no-group pypi --group cpu --no-extra flash-attn"; \
+        fi; \
+    fi && \
+    echo "Final sync with UV_SYNC_EXTRA_ARGS: ${UV_SYNC_EXTRA_ARGS}" && \
+    uv sync --frozen --no-dev --all-extras ${UV_SYNC_EXTRA_ARGS}
 
 EXPOSE 5001
 
