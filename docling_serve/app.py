@@ -77,8 +77,6 @@ class ColoredLogFormatter(logging.Formatter):
         record.levelname = f"{color}{record.levelname}{self.RESET_CODE}"
         return super().format(record)
 
-os.environ["use_gpu"] = "false"  # Force CPU usage
-
 logging.basicConfig(
     level=logging.INFO,  # Set the logging level
     format="%(levelname)s:\t%(asctime)s - %(name)s - %(message)s",

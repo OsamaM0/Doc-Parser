@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from PIL import Image
 
@@ -117,9 +117,10 @@ class DocumentProcessor:
 
             # Process individual cells
             for cell in table.data.table_cells:
-                if self._should_enhance_text(cell.text):
+                if True in self._should_enhance_text(cell.text).values():
+                    need_formula_enhancement = self._should_enhance_text(cell.text).get('formula', False)
                     cell_bbox = self.bbox_converter.get_pixel_bbox(cell, pdf_w, pdf_h, img_w, img_h)
-                    enhanced_text = self.ocr_enhancer.extract_text_from_region(page_image, cell_bbox, cell.text)
+                    enhanced_text = self.ocr_enhancer.extract_text_from_region(page_image, cell_bbox, cell.text, math_mode=need_formula_enhancement)
                     if enhanced_text and enhanced_text != cell.text:
                         _log.info(f"Enhanced cell text: '{cell.text}' -> '{enhanced_text}'")
                         cell.text = enhanced_text
@@ -149,13 +150,14 @@ class DocumentProcessor:
                 continue
 
             # Enhance text if needed
-            if self._should_enhance_text(text.text):
-                enhanced_text = self.ocr_enhancer.extract_text_from_region(page_image, text_bbox, text.text)
+            if True in self._should_enhance_text(text.text).values():
+                need_formula_enhancement = self._should_enhance_text(text.text).get('formula', False)
+                enhanced_text = self.ocr_enhancer.extract_text_from_region(page_image, text_bbox, text.text, math_mode=need_formula_enhancement)
                 if enhanced_text and enhanced_text != text.text:
                     _log.info(f"Enhanced text: '{text.text}' -> '{enhanced_text}'")
                     text.text = enhanced_text
 
-    def _should_enhance_text(self, text: str) -> bool:
+    def _should_enhance_text(self, text: str) -> Dict[str, bool]:
         """Determine if text should be enhanced based on enabled options."""
         return self.text_analyzer.needs_ocr_enhancement(
             text,

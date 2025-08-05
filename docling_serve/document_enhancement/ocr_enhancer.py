@@ -25,6 +25,10 @@ class OCREnhancer:
                 self.recognition_predictor = RecognitionPredictor()
                 self.detection_predictor = DetectionPredictor()
                 self.table_rec_predictor = TableRecPredictor()
+
+                self.recognition_predictor.to('cuda')  # Force GPU usage
+                self.detection_predictor.to('cuda')  # Force GPU usage
+                self.table_rec_predictor.to('cuda')  # Force GPU usage
                 self._models_loaded = True
             except Exception as e:
                 _log.error(f"Failed to load Surya models: {e}")
@@ -32,7 +36,7 @@ class OCREnhancer:
         else:
             self._models_loaded = False
 
-    def extract_text_from_region(self, image: Image.Image, bbox: Tuple[int, int, int, int], old_text: str) -> str:
+    def extract_text_from_region(self, image: Image.Image, bbox: Tuple[int, int, int, int], old_text: str, math_mode: bool = False) -> str:
         """Extract text from a specific region using OCR with padding and background enhancement."""
         if not self._models_loaded:
             _log.warning("OCR models not available, returning original text")
@@ -40,7 +44,7 @@ class OCREnhancer:
 
         try:
             x1, y1, x2, y2 = bbox
-            thr = 2  # Slight padding to improve OCR accuracy
+            thr = 5  # Slight padding to improve OCR accuracy
 
             # Safe cropping with bounds
             left = max(x1 - thr, 0)
@@ -52,20 +56,22 @@ class OCREnhancer:
             cropped = image.crop((left, top, right, bottom))
 
             # Create background and paste cropped image at center
-            scale_w = 3
-            scale_h = 3
+            scale_w = 2
+            scale_h = 2
             bg_w = int(cropped.width * scale_w)
             bg_h = int(cropped.height * scale_h)
             background = Image.new("RGB", (bg_w, bg_h), (255, 255, 255))  # white background
             paste_x = (bg_w - cropped.width) // 2
             paste_y = (bg_h - cropped.height) // 2
             background.paste(cropped, (paste_x, paste_y))
-
+            
+            # Enable Math Mode for formula recognition
+            
             # Run OCR on enhanced image
             predictions = self.recognition_predictor(
                 [background], 
                 det_predictor=self.detection_predictor, 
-                math_mode=True, 
+                math_mode=math_mode, 
                 task_names=['ocr_with_boxes']
             )
 
@@ -73,7 +79,7 @@ class OCREnhancer:
             lines = []
             if predictions:
                 for line in predictions[0].text_lines:
-                    if line.confidence > 0.75:
+                    if line.confidence > 0.5:
                         lines.append(line.text)
 
             enhanced_text = ' '.join(lines).strip()

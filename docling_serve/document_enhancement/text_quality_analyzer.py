@@ -5,7 +5,7 @@ import unicodedata
 class TextQualityAnalyzer:
     """Analyzes text quality to determine if OCR enhancement is needed."""
 
-    def needs_ocr_enhancement(self, text: str, check_formula: bool = False, check_encoding: bool = False) -> bool:
+    def needs_ocr_enhancement(self, text: str, check_formula: bool = False, check_encoding: bool = False) -> dict:
         """
         Determine if text needs OCR enhancement based on enabled options.
         
@@ -15,22 +15,22 @@ class TextQualityAnalyzer:
             check_encoding: Enable character encoding fix
             
         Returns:
-            True if text should be enhanced
+            Dict with 'encoding' and 'formula' boolean flags indicating enhancement needs
         """
         if not text or not text.strip():
-            return False
+            return {'encoding': False, 'formula': False}
 
-        should_enhance = False
+        result = {'encoding': False, 'formula': False}
 
         # Character encoding fix - check for replacement characters
         if check_encoding:
-            should_enhance |= self._has_encoding_issues(text)
+            result['encoding'] = self._has_encoding_issues(text)
 
         # Formula enhancement - check for Latin letters with digits
         if check_formula:
-            should_enhance |= self._needs_formula_enhancement(text)
+            result['formula'] = self._needs_formula_enhancement(text)
 
-        return should_enhance
+        return result
 
     def _has_encoding_issues(self, text: str) -> bool:
         """Check if text has character encoding issues."""
