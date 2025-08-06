@@ -4,11 +4,10 @@ ARG UV_VERSION=0.8.3
 
 ARG UV_SYNC_EXTRA_ARGS="--group dev --group cu128"
 
-
 FROM ${BASE_IMAGE} AS docling-base
 
 ###################################################################################################
-# OS Layer                                                                                        #
+# OS Layer
 ###################################################################################################
 
 USER 0
@@ -18,6 +17,10 @@ RUN --mount=type=bind,source=os-packages.txt,target=/tmp/os-packages.txt \
     dnf config-manager --best --nodocs --setopt=install_weak_deps=False --save && \
     dnf config-manager --enable crb && \
     dnf -y update && \
+    dnf install -y python3.12 python3.12-devel python3.12-pip && \
+    alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
+    alternatives --set python3 /usr/bin/python3.12 && \
+    python3 --version && \
     dnf install -y $(cat /tmp/os-packages.txt) && \
     dnf -y clean all && \
     rm -rf /var/cache/dnf
@@ -25,11 +28,12 @@ RUN --mount=type=bind,source=os-packages.txt,target=/tmp/os-packages.txt \
 RUN mkdir -p /opt/app-root/src && chown -R 1001:0 /opt/app-root
 
 ENV TESSDATA_PREFIX=/usr/share/tesseract/tessdata/
+ENV UV_PYTHON=/usr/bin/python3.12
 
 FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv_stage
 
 ###################################################################################################
-# Docling layer                                                                                   #
+# Docling Layer
 ###################################################################################################
 
 FROM docling-base
@@ -50,6 +54,7 @@ ENV \
 
 ARG UV_SYNC_EXTRA_ARGS
 
+# Initial sync with custom PYTHON path
 RUN --mount=from=uv_stage,source=/uv,target=/bin/uv \
     --mount=type=cache,target=/tmp/uv-cache,uid=1001 \
     --mount=type=bind,source=uv.lock,target=/tmp/project/uv.lock \
@@ -58,8 +63,8 @@ RUN --mount=from=uv_stage,source=/uv,target=/bin/uv \
     cd /tmp/project && \
     umask 002 && \
     UV_SYNC_ARGS="--frozen --no-install-project --no-dev" && \
-    UV_PYTHON=/usr/bin/python3 uv sync ${UV_SYNC_ARGS} --group dev --group cu128 --no-extra flash-attn && \
-    FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE UV_PYTHON=/usr/bin/python3 uv sync ${UV_SYNC_ARGS} --group dev --group cu128 --no-build-isolation-package=flash-attn && \
+    ${UV_PYTHON} /bin/uv sync ${UV_SYNC_ARGS} --group dev --group cu128 --no-extra flash-attn && \
+    FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE ${UV_PYTHON} /bin/uv sync ${UV_SYNC_ARGS} --group dev --group cu128 --no-build-isolation-package=flash-attn && \
     chown -R 1001:0 /opt/app-root && \
     chmod -R g+w /opt/app-root
 
@@ -76,11 +81,12 @@ RUN echo "Downloading models..." && \
 
 COPY --chown=1001:0 ./docling_serve ./docling_serve
 
+# Final sync with correct interpreter and environment
 RUN --mount=from=uv_stage,source=/uv,target=/bin/uv \
     --mount=type=cache,target=/opt/app-root/src/.cache/uv,uid=1001 \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    umask 002 && uv sync --frozen --no-dev ${UV_SYNC_EXTRA_ARGS}
+    umask 002 && ${UV_PYTHON} /bin/uv sync --frozen --no-dev ${UV_SYNC_EXTRA_ARGS}
 
 EXPOSE 5001
 
