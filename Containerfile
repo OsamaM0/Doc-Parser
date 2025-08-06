@@ -48,14 +48,6 @@ COPY --chown=1001:0 pyproject.toml uv.lock ./
 
 ARG UV_SYNC_EXTRA_ARGS="--group dev --group cu128"
 
-RUN pip install --no-cache-dir \
-      --index-url https://download.pytorch.org/whl/cu128 \
-      torch==2.7.1+cu128 \
-      torchvision==0.22.1+cu128 && \
-    pip install --no-cache-dir \
-      flash-attn==2.8.2 \
-      --no-build-isolation
-
 RUN --mount=from=ghcr.io/astral-sh/uv:0.7.19,source=/uv,target=/bin/uv \
     --mount=type=cache,target=/opt/app-root/src/.cache/uv,uid=1001 \
     --mount=type=bind,source=uv.lock,target=uv.lock \
