@@ -48,9 +48,7 @@ dependencies = [
   "scalar-fastapi>=1.0.3",
   "docling-mcp>=1.0.0",
   "openai==1.97.0",
-  "surya-ocr==0.14.6",
-  "rapidocr-onnxruntime==1.4.4",
-  "gradio==5.35.0"
+  "surya-ocr==0.14.6"
 ]
 
 [project.optional-dependencies]
@@ -121,7 +119,7 @@ rocm = [
 
 [tool.uv]
 package = true
-default-groups = ["dev", "cu128"]
+default-groups = ["dev", "cu128", "ui", "rapidocr"]
 conflicts = [
   [
     { group = "pypi" },
