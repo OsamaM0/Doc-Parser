@@ -1,12 +1,17 @@
 ARG BASE_IMAGE=quay.io/sclorg/python-312-c9s:c9s
 
-FROM ${BASE_IMAGE}
+ARG UV_VERSION=0.8.3
 
-USER 0
+ARG UV_SYNC_EXTRA_ARGS="--group dev --group cu128"
+
+
+FROM ${BASE_IMAGE} AS docling-base
 
 ###################################################################################################
 # OS Layer                                                                                        #
 ###################################################################################################
+
+USER 0
 
 RUN --mount=type=bind,source=os-packages.txt,target=/tmp/os-packages.txt \
     dnf -y install --best --nodocs --setopt=install_weak_deps=False dnf-plugins-core && \
@@ -17,57 +22,55 @@ RUN --mount=type=bind,source=os-packages.txt,target=/tmp/os-packages.txt \
     dnf -y clean all && \
     rm -rf /var/cache/dnf
 
-RUN mkdir -p /opt/app-root/src/.cache \
-    && /usr/bin/fix-permissions /opt/app-root/src/.cache
+RUN /usr/bin/fix-permissions /opt/app-root/src/.cache
 
 ENV TESSDATA_PREFIX=/usr/share/tesseract/tessdata/
+
+FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv_stage
 
 ###################################################################################################
 # Docling layer                                                                                   #
 ###################################################################################################
+
+FROM docling-base
 
 USER 1001
 
 WORKDIR /opt/app-root/src
 
 ENV \
-    # On container environments, always set a thread budget to avoid undesired thread congestion.
     OMP_NUM_THREADS=4 \
     LANG=en_US.UTF-8 \
     LC_ALL=en_US.UTF-8 \
     PYTHONIOENCODING=utf-8 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    DOCLING_SERVE_ARTIFACTS_PATH=/opt/app-root/src/.cache/docling/models \
-    UV_PROJECT_ENVIRONMENT=/opt/app-root/src/.cache/uv/env
+    UV_PROJECT_ENVIRONMENT=/opt/app-root \
+    DOCLING_SERVE_ARTIFACTS_PATH=/opt/app-root/src/.cache/docling/models
 
-RUN mkdir -p /opt/app-root/src/.cache/uv/env
+ARG UV_SYNC_EXTRA_ARGS
 
-COPY --chown=1001:0 pyproject.toml uv.lock ./
-
-
-ARG UV_SYNC_EXTRA_ARGS="--group dev --group cu128"
-
-RUN --mount=from=ghcr.io/astral-sh/uv:0.7.19,source=/uv,target=/bin/uv \
+RUN --mount=from=uv_stage,source=/uv,target=/bin/uv \
     --mount=type=cache,target=/opt/app-root/src/.cache/uv,uid=1001 \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     umask 002 && \
     UV_SYNC_ARGS="--frozen --no-install-project --no-dev" && \
-    uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS}
+    uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-extra flash-attn && \
+    FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-build-isolation-package=flash-attn
 
 ARG MODELS_LIST="layout tableformer picture_classifier easyocr"
 
-RUN --mount=from=ghcr.io/astral-sh/uv:0.7.19,source=/uv,target=/bin/uv \
-    echo "Downloading models..." && \
+RUN echo "Downloading models..." && \
     HF_HUB_DOWNLOAD_TIMEOUT="90" \
     HF_HUB_ETAG_TIMEOUT="90" \
-    uv run docling-tools models download -o "${DOCLING_SERVE_ARTIFACTS_PATH}" ${MODELS_LIST} && \
+    docling-tools models download -o "${DOCLING_SERVE_ARTIFACTS_PATH}" ${MODELS_LIST} && \
     chown -R 1001:0 ${DOCLING_SERVE_ARTIFACTS_PATH} && \
     chmod -R g=u ${DOCLING_SERVE_ARTIFACTS_PATH}
 
 COPY --chown=1001:0 ./docling_serve ./docling_serve
-RUN --mount=from=ghcr.io/astral-sh/uv:0.7.19,source=/uv,target=/bin/uv \
+
+RUN --mount=from=uv_stage,source=/uv,target=/bin/uv \
     --mount=type=cache,target=/opt/app-root/src/.cache/uv,uid=1001 \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
@@ -75,4 +78,4 @@ RUN --mount=from=ghcr.io/astral-sh/uv:0.7.19,source=/uv,target=/bin/uv \
 
 EXPOSE 5001
 
-CMD ["uv", "run", "docling-serve", "run"]
+CMD ["docling-serve", "run"]
