@@ -22,7 +22,7 @@ RUN --mount=type=bind,source=os-packages.txt,target=/tmp/os-packages.txt \
     dnf -y clean all && \
     rm -rf /var/cache/dnf
 
-RUN /usr/bin/fix-permissions /opt/app-root/src/.cache
+RUN mkdir -p /opt/app-root/src && chown -R 1001:0 /opt/app-root
 
 ENV TESSDATA_PREFIX=/usr/share/tesseract/tessdata/
 
