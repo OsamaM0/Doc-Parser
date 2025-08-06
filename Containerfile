@@ -34,7 +34,7 @@ FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv_stage
 
 FROM docling-base
 
-USER 1001
+USER 0
 
 WORKDIR /opt/app-root/src
 
@@ -57,7 +57,11 @@ RUN --mount=from=uv_stage,source=/uv,target=/bin/uv \
     umask 002 && \
     UV_SYNC_ARGS="--frozen --no-install-project --no-dev" && \
     uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-extra flash-attn && \
-    FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-build-isolation-package=flash-attn
+    FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-build-isolation-package=flash-attn && \
+    chown -R 1001:0 /opt/app-root && \
+    chmod -R g+w /opt/app-root
+
+USER 1001
 
 ARG MODELS_LIST="layout tableformer picture_classifier easyocr"
 
