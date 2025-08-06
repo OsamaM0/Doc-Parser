@@ -51,7 +51,7 @@ ENV \
 ARG UV_SYNC_EXTRA_ARGS
 
 RUN --mount=from=uv_stage,source=/uv,target=/bin/uv \
-    --mount=type=cache,target=/opt/app-root/.cache/uv,uid=1001 \
+    --mount=type=cache,target=/tmp/uv-cache,uid=1001 \
     --mount=type=bind,source=uv.lock,target=/tmp/project/uv.lock \
     --mount=type=bind,source=pyproject.toml,target=/tmp/project/pyproject.toml \
     mkdir -p /tmp/project && \
