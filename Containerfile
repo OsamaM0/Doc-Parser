@@ -58,8 +58,8 @@ RUN --mount=from=uv_stage,source=/uv,target=/bin/uv \
     cd /tmp/project && \
     umask 002 && \
     UV_SYNC_ARGS="--frozen --no-install-project --no-dev" && \
-    uv sync ${UV_SYNC_ARGS} --group dev --group cu128 --no-extra flash-attn && \
-    FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE uv sync ${UV_SYNC_ARGS} --group dev --group cu128 --no-build-isolation-package=flash-attn && \
+    uv sync --system ${UV_SYNC_ARGS} --group dev --group cu128 --no-extra flash-attn && \
+    FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE uv sync --system ${UV_SYNC_ARGS} --group dev --group cu128 --no-build-isolation-package=flash-attn && \
     chown -R 1001:0 /opt/app-root && \
     chmod -R g+w /opt/app-root
 
