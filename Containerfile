@@ -58,10 +58,11 @@ RUN --mount=from=ghcr.io/astral-sh/uv:0.7.19,source=/uv,target=/bin/uv \
 
 ARG MODELS_LIST="layout tableformer picture_classifier easyocr"
 
-RUN echo "Downloading models..." && \
+RUN --mount=from=ghcr.io/astral-sh/uv:0.7.19,source=/uv,target=/bin/uv \
+    echo "Downloading models..." && \
     HF_HUB_DOWNLOAD_TIMEOUT="90" \
     HF_HUB_ETAG_TIMEOUT="90" \
-    docling-tools models download -o "${DOCLING_SERVE_ARTIFACTS_PATH}" ${MODELS_LIST} && \
+    uv run docling-tools models download -o "${DOCLING_SERVE_ARTIFACTS_PATH}" ${MODELS_LIST} && \
     chown -R 1001:0 ${DOCLING_SERVE_ARTIFACTS_PATH} && \
     chmod -R g=u ${DOCLING_SERVE_ARTIFACTS_PATH}
 
