@@ -1,6 +1,6 @@
 ARG BASE_IMAGE=quay.io/sclorg/python-312-c9s:c9s
 ARG UV_VERSION=0.8.3
-ARG UV_SYNC_EXTRA_ARGS="--group dev --group cu128"
+ARG UV_SYNC_EXTRA_ARGS="--group dev --group cu128 --group ui --group rapidocr --group tesserocr"
 
 ###############################################################################
 # 1) Base Stage: Install OS deps & Python 3.12

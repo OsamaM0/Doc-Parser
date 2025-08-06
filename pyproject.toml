@@ -119,7 +119,7 @@ rocm = [
 
 [tool.uv]
 package = true
-default-groups = ["dev", "cu128", "ui", "rapidocr"]
+default-groups = ["dev", "cu128"]
 conflicts = [
   [
     { group = "pypi" },
