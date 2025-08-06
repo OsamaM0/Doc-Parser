@@ -38,26 +38,30 @@ ENV \
     PYTHONIOENCODING=utf-8 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    UV_PROJECT_ENVIRONMENT=/opt/app-root \
     DOCLING_SERVE_ARTIFACTS_PATH=/opt/app-root/src/.cache/docling/models \
     UV_PROJECT_ENVIRONMENT=/opt/app-root/src/.cache/uv/env
 
 RUN mkdir -p /opt/app-root/src/.cache/uv/env
 
-ARG UV_SYNC_EXTRA_ARGS="--no-group pypi --group cu128"
+COPY --chown=1001:0 pyproject.toml uv.lock ./
+
+
+ARG UV_SYNC_EXTRA_ARGS="--group dev --group cu128"
 
 RUN pip install --no-cache-dir \
-    --index-url https://download.pytorch.org/whl/cu128 \
-    torch==2.7.1+cu128 \
-    torchvision==0.22.1+cu128 && \
-    pip install --no-cache-dir flash-attn==2.8.2
+      --index-url https://download.pytorch.org/whl/cu128 \
+      torch==2.7.1+cu128 \
+      torchvision==0.22.1+cu128 && \
+    pip install --no-cache-dir \
+      flash-attn==2.8.2 \
+      --no-build-isolation
 
 RUN --mount=from=ghcr.io/astral-sh/uv:0.7.19,source=/uv,target=/bin/uv \
     --mount=type=cache,target=/opt/app-root/src/.cache/uv,uid=1001 \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     umask 002 && \
-    UV_SYNC_ARGS="--frozen --no-install-project --no-dev --all-extras" && \
+    UV_SYNC_ARGS="--frozen --no-install-project --no-dev" && \
     uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS}
 
 ARG MODELS_LIST="layout tableformer picture_classifier easyocr"
@@ -74,7 +78,7 @@ RUN --mount=from=ghcr.io/astral-sh/uv:0.7.19,source=/uv,target=/bin/uv \
     --mount=type=cache,target=/opt/app-root/src/.cache/uv,uid=1001 \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    umask 002 && uv sync --frozen --no-dev --all-extras ${UV_SYNC_EXTRA_ARGS}
+    umask 002 && uv sync --frozen --no-dev ${UV_SYNC_EXTRA_ARGS}
 
 EXPOSE 5001
 
