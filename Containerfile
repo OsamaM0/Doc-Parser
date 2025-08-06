@@ -56,8 +56,8 @@ RUN --mount=from=uv_stage,source=/uv,target=/bin/uv \
     --mount=type=bind,source=pyproject.toml,target=/tmp/project/pyproject.toml \
     mkdir -p /tmp/project && cd /tmp/project && umask 002 && \
     UV_SYNC_ARGS="--frozen --no-install-project --no-dev" && \
-    /bin/uv sync ${UV_SYNC_ARGS} --group dev --group cu128 --no-extra flash-attn && \
-    FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE /bin/uv sync ${UV_SYNC_ARGS} --group dev --group cu128 --no-build-isolation-package=flash-attn && \
+    /bin/uv sync ${UV_SYNC_ARGS} --group dev --group cu128 --group ui --group rapidocr --group tesserocr --no-extra flash-attn && \
+    FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE /bin/uv sync ${UV_SYNC_ARGS} --group dev --group cu128 --group ui --group rapidocr --group tesserocr --no-build-isolation-package=flash-attn && \
     chown -R 1001:0 /opt/app-root && chmod -R g+w /opt/app-root
 
 USER 1001
