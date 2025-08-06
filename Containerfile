@@ -51,13 +51,14 @@ ENV \
 ARG UV_SYNC_EXTRA_ARGS
 
 RUN --mount=from=uv_stage,source=/uv,target=/bin/uv \
-    --mount=type=cache,target=/opt/app-root/src/.cache/uv,uid=1001 \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    --mount=type=cache,target=/opt/app-root/.cache/uv,uid=1001 \
+    --mount=type=bind,source=uv.lock,target=/opt/app-root/src/uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=/opt/app-root/src/pyproject.toml \
     umask 002 && \
     UV_SYNC_ARGS="--frozen --no-install-project --no-dev" && \
-    uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-extra flash-attn && \
-    FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-build-isolation-package=flash-attn && \
+    cd / && \
+    uv sync /opt/app-root/src ${UV_SYNC_ARGS} --group dev --group cu128 --no-extra flash-attn && \
+    FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE uv sync /opt/app-root/src ${UV_SYNC_ARGS} --group dev --group cu128 --no-build-isolation-package=flash-attn && \
     chown -R 1001:0 /opt/app-root && \
     chmod -R g+w /opt/app-root
 
