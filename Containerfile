@@ -75,4 +75,4 @@ RUN --mount=from=ghcr.io/astral-sh/uv:0.7.19,source=/uv,target=/bin/uv \
 
 EXPOSE 5001
 
-CMD ["docling-serve", "run"]
+CMD ["uv", "run", "docling-serve", "run"]
