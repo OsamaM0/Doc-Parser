@@ -62,7 +62,7 @@ RUN --mount=from=uv_stage,source=/uv,target=/bin/uv \
 
 USER 1001
 
-ARG MODELS_LIST="layout tableformer picture_classifier easyocr CodeFormula"
+ARG MODELS_LIST="layout tableformer picture_classifier easyocr code_formula smoldocling" "
 RUN echo "Downloading models..." && \
     HF_HUB_DOWNLOAD_TIMEOUT="90" HF_HUB_ETAG_TIMEOUT="90" \
     docling-tools models download -o "${DOCLING_SERVE_ARTIFACTS_PATH}" ${MODELS_LIST} && \
