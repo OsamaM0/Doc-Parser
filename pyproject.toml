@@ -88,7 +88,12 @@ dev = [
     "websockets~=14.0",
     "scalar-fastapi>=1.0.3",
     "openai==1.97.0",
-    "surya-ocr==0.14.6"
+    "surya-ocr==0.14.6",
+    "gradio~=5.9",
+    "pydantic<2.11.0",
+    "tesserocr~=2.7",
+    "rapidocr-onnxruntime~=1.4",
+    "onnxruntime~=1.7"
 ]
 
 pypi = [
