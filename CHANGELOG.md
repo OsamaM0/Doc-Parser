@@ -1,3 +1,77 @@
+## [v1.2.2](https://github.com/docling-project/docling-serve/releases/tag/v1.2.2) - 2025-08-13
+
+### Fix
+
+* Update of transformers module to 4.55.1 ([#316](https://github.com/docling-project/docling-serve/issues/316)) ([`7692eb2`](https://github.com/docling-project/docling-serve/commit/7692eb26006fd4deaa021180c99e23a1b65de506))
+
+## [v1.2.1](https://github.com/docling-project/docling-serve/releases/tag/v1.2.1) - 2025-08-13
+
+### Fix
+
+* Handling of vlm model options and update deps ([#314](https://github.com/docling-project/docling-serve/issues/314)) ([`8b470cb`](https://github.com/docling-project/docling-serve/commit/8b470cba8ef500c271eb84c8368c8a1a1a5a6d6a))
+* Add missing response type in sync endpoints ([#309](https://github.com/docling-project/docling-serve/issues/309)) ([`8048f45`](https://github.com/docling-project/docling-serve/commit/8048f4589a91de2b2b391ab33a326efd1b29f25b))
+
+### Documentation
+
+* Update readme to use v1 ([#306](https://github.com/docling-project/docling-serve/issues/306)) ([`b3058e9`](https://github.com/docling-project/docling-serve/commit/b3058e91e0c56e27110eb50f22cbdd89640bf398))
+* Update deployment examples to use v1 API ([#308](https://github.com/docling-project/docling-serve/issues/308)) ([`63da9ee`](https://github.com/docling-project/docling-serve/commit/63da9eedebae3ad31d04e65635e573194e413793))
+* Fix typo in v1 migration instructions ([#307](https://github.com/docling-project/docling-serve/issues/307)) ([`b15dc25`](https://github.com/docling-project/docling-serve/commit/b15dc2529f78d68a475e5221c37408c3f77d8588))
+
+## [v1.2.0](https://github.com/docling-project/docling-serve/releases/tag/v1.2.0) - 2025-08-07
+
+### Feature
+
+* Workers without shared models and convert params ([#304](https://github.com/docling-project/docling-serve/issues/304)) ([`db3fdb5`](https://github.com/docling-project/docling-serve/commit/db3fdb5bc1a0ae250afd420d737abc4071a7546c))
+* Add rocm image build support and fix cuda ([#292](https://github.com/docling-project/docling-serve/issues/292)) ([`fd1b987`](https://github.com/docling-project/docling-serve/commit/fd1b987e8dc174f1a6013c003dde33e9acbae39a))
+
+## [v1.1.0](https://github.com/docling-project/docling-serve/releases/tag/v1.1.0) - 2025-07-30
+
+### Feature
+
+* Add docling-mcp in the distribution ([#290](https://github.com/docling-project/docling-serve/issues/290)) ([`ecb1874`](https://github.com/docling-project/docling-serve/commit/ecb1874a507bef83d102e0e031e49fed34298637))
+* Add 3.0 openapi endpoint ([#287](https://github.com/docling-project/docling-serve/issues/287)) ([`ec594d8`](https://github.com/docling-project/docling-serve/commit/ec594d84fe36df23e7d010a2fcf769856c43600b))
+* Add new source and target ([#270](https://github.com/docling-project/docling-serve/issues/270)) ([`3771c1b`](https://github.com/docling-project/docling-serve/commit/3771c1b55403bd51966d07d8f760d5c4fbcc1760))
+
+### Fix
+
+* Referenced paths relative to zip root ([#289](https://github.com/docling-project/docling-serve/issues/289)) ([`1333f71`](https://github.com/docling-project/docling-serve/commit/1333f71c9c6495342b2169d574e921f828446f15))
+
+## [v1.0.1](https://github.com/docling-project/docling-serve/releases/tag/v1.0.1) - 2025-07-21
+
+### Fix
+
+* Docling update v2.42.0 ([#277](https://github.com/docling-project/docling-serve/issues/277)) ([`8706706`](https://github.com/docling-project/docling-serve/commit/8706706e8797b0a06ec4baa7cf87988311be68b6))
+
+### Documentation
+
+* Typo in README ([#276](https://github.com/docling-project/docling-serve/issues/276)) ([`766adb2`](https://github.com/docling-project/docling-serve/commit/766adb248113c7bd5144d14b3c82929a2ad29f8e))
+
+## [v1.0.0](https://github.com/docling-project/docling-serve/releases/tag/v1.0.0) - 2025-07-14
+
+### Feature
+
+* V1 api with list of sources and target ([#249](https://github.com/docling-project/docling-serve/issues/249)) ([`56e328b`](https://github.com/docling-project/docling-serve/commit/56e328baf76b4bb0476fc6ca820b52034e4f97bf))
+* Use orchestrators from jobkit ([#248](https://github.com/docling-project/docling-serve/issues/248)) ([`daa924a`](https://github.com/docling-project/docling-serve/commit/daa924a77e56d063ef17347dfd8a838872a70529))
+
+### Breaking
+
+* v1 api with list of sources and target ([#249](https://github.com/docling-project/docling-serve/issues/249)) ([`56e328b`](https://github.com/docling-project/docling-serve/commit/56e328baf76b4bb0476fc6ca820b52034e4f97bf))
+* use orchestrators from jobkit ([#248](https://github.com/docling-project/docling-serve/issues/248)) ([`daa924a`](https://github.com/docling-project/docling-serve/commit/daa924a77e56d063ef17347dfd8a838872a70529))
+
+## [v0.16.1](https://github.com/docling-project/docling-serve/releases/tag/v0.16.1) - 2025-07-07
+
+### Fix
+
+* Upgrade deps including, docling v2.40.0 with locks in models init ([#264](https://github.com/docling-project/docling-serve/issues/264)) ([`bfde1a0`](https://github.com/docling-project/docling-serve/commit/bfde1a0991c2da53b72c4f131ff74fa10f6340de))
+* Missing tesseract osd ([#263](https://github.com/docling-project/docling-serve/issues/263)) ([`eb3892e`](https://github.com/docling-project/docling-serve/commit/eb3892ee141eb2c941d580b095d8a266f2d2610c))
+* Properly load models at boot ([#244](https://github.com/docling-project/docling-serve/issues/244)) ([`149a8cb`](https://github.com/docling-project/docling-serve/commit/149a8cb1c0a16c1e0b7d17f40b88b4d6e8f0109d))
+
+### Documentation
+
+* Fix typo ([#259](https://github.com/docling-project/docling-serve/issues/259)) ([`93b8471`](https://github.com/docling-project/docling-serve/commit/93b84712b2c6d180908a197847b52b217a7ff05f))
+* Change the doc example ([#258](https://github.com/docling-project/docling-serve/issues/258)) ([`c45b937`](https://github.com/docling-project/docling-serve/commit/c45b93706466a073ab4a5c75aa8a267110873e26))
+* Update typo ([#247](https://github.com/docling-project/docling-serve/issues/247)) ([`50e431f`](https://github.com/docling-project/docling-serve/commit/50e431f30fbffa33f43727417fe746d20cbb9d6b))
+
 ## [v0.16.0](https://github.com/docling-project/docling-serve/releases/tag/v0.16.0) - 2025-06-25
 
 ### Feature

@@ -1,62 +1,72 @@
-import base64
-from io import BytesIO
-from typing import Annotated, Any, Union
+import enum
+from typing import Annotated, Literal
 
-from pydantic import AnyHttpUrl, BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+from pydantic_core import PydanticCustomError
+from typing_extensions import Self
 
-from docling.datamodel.base_models import DocumentStream
+from docling_jobkit.datamodel.http_inputs import FileSource, HttpSource
+from docling_jobkit.datamodel.s3_coords import S3Coordinates
+from docling_jobkit.datamodel.task_targets import (
+    InBodyTarget,
+    S3Target,
+    TaskTarget,
+    ZipTarget,
+)
 
-from docling_serve.datamodel.convert import ConvertDocumentsOptions
+from docling_serve.datamodel.convert import ConvertDocumentsRequestOptions
+from docling_serve.settings import AsyncEngine, docling_serve_settings
 
-
-class DocumentsConvertBase(BaseModel):
-    options: ConvertDocumentsOptions = ConvertDocumentsOptions()
-
-
-class HttpSource(BaseModel):
-    url: Annotated[
-        AnyHttpUrl,
-        Field(
-            description="HTTP url to process",
-            examples=["https://arxiv.org/pdf/2206.01062"],
-        ),
-    ]
-    headers: Annotated[
-        dict[str, Any],
-        Field(
-            description="Additional headers used to fetch the urls, "
-            "e.g. authorization, agent, etc"
-        ),
-    ] = {}
+## Sources
 
 
-class FileSource(BaseModel):
-    base64_string: Annotated[
-        str,
-        Field(
-            description="Content of the file serialized in base64. "
-            "For example it can be obtained via "
-            "`base64 -w 0 /path/to/file/pdf-to-convert.pdf`."
-        ),
-    ]
-    filename: Annotated[
-        str,
-        Field(description="Filename of the uploaded document", examples=["file.pdf"]),
-    ]
-
-    def to_document_stream(self) -> DocumentStream:
-        buf = BytesIO(base64.b64decode(self.base64_string))
-        return DocumentStream(stream=buf, name=self.filename)
+class FileSourceRequest(FileSource):
+    kind: Literal["file"] = "file"
 
 
-class ConvertDocumentHttpSourcesRequest(DocumentsConvertBase):
-    http_sources: list[HttpSource]
+class HttpSourceRequest(HttpSource):
+    kind: Literal["http"] = "http"
 
 
-class ConvertDocumentFileSourcesRequest(DocumentsConvertBase):
-    file_sources: list[FileSource]
+class S3SourceRequest(S3Coordinates):
+    kind: Literal["s3"] = "s3"
 
 
-ConvertDocumentsRequest = Union[
-    ConvertDocumentFileSourcesRequest, ConvertDocumentHttpSourcesRequest
+## Multipart targets
+class TargetName(str, enum.Enum):
+    INBODY = InBodyTarget().kind
+    ZIP = ZipTarget().kind
+
+
+## Aliases
+SourceRequestItem = Annotated[
+    FileSourceRequest | HttpSourceRequest | S3SourceRequest, Field(discriminator="kind")
 ]
+
+
+## Complete Source request
+class ConvertDocumentsRequest(BaseModel):
+    options: ConvertDocumentsRequestOptions = ConvertDocumentsRequestOptions()
+    sources: list[SourceRequestItem]
+    target: TaskTarget = InBodyTarget()
+
+    @model_validator(mode="after")
+    def validate_s3_source_and_target(self) -> Self:
+        for source in self.sources:
+            if isinstance(source, S3SourceRequest):
+                if docling_serve_settings.eng_kind != AsyncEngine.KFP:
+                    raise PydanticCustomError(
+                        "error source", 'source kind "s3" requires engine kind "KFP"'
+                    )
+                if self.target.kind != "s3":
+                    raise PydanticCustomError(
+                        "error source", 'source kind "s3" requires target kind "s3"'
+                    )
+        if isinstance(self.target, S3Target):
+            for source in self.sources:
+                if isinstance(source, S3SourceRequest):
+                    return self
+            raise PydanticCustomError(
+                "error target", 'target kind "s3" requires source kind "s3"'
+            )
+        return self

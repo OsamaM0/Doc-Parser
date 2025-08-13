@@ -1,3 +1,5 @@
+
+import enum
 import sys
 from pathlib import Path
 from typing import Optional, Union
@@ -6,7 +8,10 @@ from pydantic import AnyUrl, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Self
 
-from docling_serve.datamodel.engines import AsyncEngine
+
+class AsyncEngine(str, enum.Enum):
+    LOCAL = "local"
+    KFP = "kfp"
 
 
 class UvicornSettings(BaseSettings):
@@ -59,6 +64,7 @@ class DoclingServeSettings(BaseSettings):
     eng_kind: AsyncEngine = AsyncEngine.LOCAL
     # Local engine
     eng_loc_num_workers: int = 2
+    eng_loc_share_models: bool = False
     # KFP engine
     eng_kfp_endpoint: Optional[AnyUrl] = None
     eng_kfp_token: Optional[str] = None

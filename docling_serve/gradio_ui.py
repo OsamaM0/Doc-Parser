@@ -223,8 +223,11 @@ def auto_set_return_as_file(
 
 
 def change_ocr_lang(ocr_engine):
+    # Arabic language support maintained from your version
     if ocr_engine == "easyocr":
         return "en,ar"
+    elif ocr_engine == "tesseract_cli":
+        return "eng,ara"
     elif ocr_engine == "tesseract":
         return "eng,ara"
     elif ocr_engine == "rapidocr":
@@ -239,7 +242,7 @@ def wait_task_finish(task_id: str, return_as_file: bool):
     while not task_finished:
         try:
             response = httpx.get(
-                f"{get_api_endpoint()}/v1alpha/status/poll/{task_id}?wait=5",
+                f"{get_api_endpoint()}/v1/status/poll/{task_id}?wait=5",  # Updated to v1 API
                 verify=ssl_ctx,
                 timeout=15,
             )
@@ -262,7 +265,7 @@ def wait_task_finish(task_id: str, return_as_file: bool):
     if conversion_sucess:
         try:
             response = httpx.get(
-                f"{get_api_endpoint()}/v1alpha/result/{task_id}",
+                f"{get_api_endpoint()}/v1/result/{task_id}",  # Updated to v1 API
                 timeout=15,
                 verify=ssl_ctx,
             )
@@ -306,7 +309,7 @@ def process_url(
     openai_model,
     openai_prompt,
 ):
-    # Build picture annotation options
+    # Build picture annotation options - your custom enhancement
     picture_annotation = None
     if enable_picture_annotation:
         from docling_serve.datamodel.convert import (
@@ -340,42 +343,47 @@ def process_url(
                 model_type=PictureAnnotationModelType.LOCAL
             )
 
+    # Updated to v1 API format
+    target = {"kind": "zip" if return_as_file else "inbody"}
     parameters = {
-        "http_sources": [{"url": source} for source in input_sources.split(",")],
+        "sources": [
+            {"kind": "http", "url": source} for source in input_sources.split(",")
+        ],
         "options": {
             "to_formats": to_formats,
             "image_export_mode": image_export_mode,
             "pipeline": pipeline,
-            "do_ocr": ocr,
+            "ocr": ocr,
             "force_ocr": force_ocr,
             "ocr_engine": ocr_engine,
             "ocr_lang": _to_list_of_strings(ocr_lang),
             "pdf_backend": pdf_backend,
             "table_mode": table_mode,
             "abort_on_error": abort_on_error,
-            "return_as_file": return_as_file,
             "do_code_enrichment": do_code_enrichment,
             "do_formula_enrichment": do_formula_enrichment,
             "do_picture_classification": do_picture_classification,
             "do_picture_description": do_picture_description,
-            "do_document_enhancement": do_document_enhancement,
-            "enable_character_encoding_fix": enable_character_encoding_fix,
+            "do_document_enhancement": do_document_enhancement,  # Your custom feature
+            "enable_character_encoding_fix": enable_character_encoding_fix,  # Your custom feature
             "picture_annotation": picture_annotation.model_dump()
             if picture_annotation
-            else None,
+            else None,  # Your custom feature
         },
+        "target": target,
     }
+    
     if (
-        not parameters["http_sources"]
-        or len(parameters["http_sources"]) == 0
-        or parameters["http_sources"][0]["url"] == ""
+        not parameters["sources"]
+        or len(parameters["sources"]) == 0
+        or parameters["sources"][0]["url"] == ""
     ):
         logger.error("No input sources provided.")
         raise gr.Error("No input sources provided.", print_exception=False)
     try:
         ssl_ctx = get_ssl_context()
         response = httpx.post(
-            f"{get_api_endpoint()}/v1alpha/convert/source/async",
+            f"{get_api_endpoint()}/v1/convert/source/async",  # Updated to v1 API
             json=parameters,
             verify=ssl_ctx,
             timeout=60,
@@ -463,12 +471,19 @@ def process_file(
                 model_type=PictureAnnotationModelType.LOCAL
             )
 
+    if not files or len(files) == 0:
+        logger.error("No files provided.")
+        raise gr.Error("No files provided.", print_exception=False)
+    
+    # Updated to v1 API format
     files_data = [
-        {"base64_string": file_to_base64(file), "filename": file.name} for file in files
+        {"kind": "file", "base64_string": file_to_base64(file), "filename": file.name}
+        for file in files
     ]
+    target = {"kind": "zip" if return_as_file else "inbody"}
 
     parameters = {
-        "file_sources": files_data,
+        "sources": files_data,
         "options": {
             "to_formats": to_formats,
             "image_export_mode": image_export_mode,
@@ -480,23 +495,23 @@ def process_file(
             "pdf_backend": pdf_backend,
             "table_mode": table_mode,
             "abort_on_error": abort_on_error,
-            "return_as_file": return_as_file,
             "do_code_enrichment": do_code_enrichment,
             "do_formula_enrichment": do_formula_enrichment,
             "do_picture_classification": do_picture_classification,
             "do_picture_description": do_picture_description,
-            "do_document_enhancement": do_document_enhancement,
-            "enable_character_encoding_fix": enable_character_encoding_fix,
+            "do_document_enhancement": do_document_enhancement,  # Your custom feature
+            "enable_character_encoding_fix": enable_character_encoding_fix,  # Your custom feature
             "picture_annotation": picture_annotation.model_dump()
             if picture_annotation
-            else None,
+            else None,  # Your custom feature
         },
+        "target": target,
     }
 
     try:
         ssl_ctx = get_ssl_context()
         response = httpx.post(
-            f"{get_api_endpoint()}/v1alpha/convert/source/async",
+            f"{get_api_endpoint()}/v1/convert/source/async",  # Updated to v1 API
             json=parameters,
             verify=ssl_ctx,
             timeout=60,
@@ -571,7 +586,7 @@ with gr.Blocks(
     css=css,
     theme=theme,
     title="Docling Serve",
-    delete_cache=(3600, 3600),  # Delete all files older than 1 hour every hour
+    delete_cache=(3600, 36000),  # Delete all files older than 10 hour every hour
 ) as ui:
     # Constants stored in states to be able to pass them as inputs to functions
     processing_text = gr.State("Processing your document(s), please wait...")
@@ -704,7 +719,7 @@ with gr.Blocks(
                 )
             with gr.Column(scale=1, min_width=200):
                 ocr_lang = gr.Textbox(
-                    label="OCR Language (beware of the format)", value="en,ar"
+                    label="OCR Language (beware of the format)", value="en,ar"  # Arabic default maintained
                 )
             ocr_engine.change(change_ocr_lang, inputs=[ocr_engine], outputs=[ocr_lang])
         with gr.Row():
@@ -747,7 +762,7 @@ with gr.Blocks(
                     label="Fix character encoding errors", value=False
                 )
 
-        # Picture Annotation Section
+        # Picture Annotation Section - Your custom enhancement
         with gr.Accordion("Picture Annotation", open=False):
             enable_picture_annotation = gr.Checkbox(
                 label="Enable Picture Annotation", value=False

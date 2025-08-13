@@ -9,27 +9,24 @@ On top of the source of file (see below), both endpoints support the same parame
 - `from_formats` (List[str]): Input format(s) to convert from. Allowed values: `docx`, `pptx`, `html`, `image`, `pdf`, `asciidoc`, `md`. Defaults to all formats.
 - `to_formats` (List[str]): Output format(s) to convert to. Allowed values: `md`, `json`, `html`, `text`, `doctags`. Defaults to `md`.
 - `pipeline` (str). The choice of which pipeline to use. Allowed values are `standard` and `vlm`. Defaults to `standard`.
-- `page_range` (tuple). If speficied, only convert a range of pages. The page number starts at 1.
+- `page_range` (tuple). If specified, only convert a range of pages. The page number starts at 1.
 - `do_ocr` (bool): If enabled, the bitmap content will be processed using OCR. Defaults to `True`.
 - `image_export_mode`: Image export mode for the document (only in case of JSON, Markdown or HTML). Allowed values: embedded, placeholder, referenced. Optional, defaults to `embedded`.
 - `force_ocr` (bool): If enabled, replace any existing text with OCR-generated text over the full content. Defaults to `False`.
-- `ocr_engine` (str): OCR engine to use. Allowed values: `easyocr`, `tesseract`, `rapidocr`, `ocrmac`. Defaults to `easyocr`. To use the `tesseract` engine, tesseract must be installed where docling-serve is running: `pip install tesserocr`
+- `ocr_engine` (str): OCR engine to use. Allowed values: `easyocr`, `tesserocr`, `tesseract`, `rapidocr`, `ocrmac`. Defaults to `easyocr`. To use the `tesserocr` engine, `tesserocr` must be installed where docling-serve is running: `pip install tesserocr`
 - `ocr_lang` (List[str]): List of languages used by the OCR engine. Note that each OCR engine has different values for the language names. Defaults to empty.
 - `pdf_backend` (str): PDF backend to use. Allowed values: `pypdfium2`, `dlparse_v1`, `dlparse_v2`, `dlparse_v4`. Defaults to `dlparse_v4`.
 - `table_mode` (str): Table mode to use. Allowed values: `fast`, `accurate`. Defaults to `fast`.
 - `abort_on_error` (bool): If enabled, abort on error. Defaults to false.
-- `return_as_file` (boo): If enabled, return the output as a file. Defaults to false.
-- `md_page_break_placeholder` (str): Add this placeholder betweek pages in the markdown output.
+- `md_page_break_placeholder` (str): Add this placeholder between pages in the markdown output.
 - `do_table_structure` (bool): If enabled, the table structure will be extracted. Defaults to true.
 - `do_code_enrichment` (bool): If enabled, perform OCR code enrichment. Defaults to false.
 - `do_formula_enrichment` (bool): If enabled, perform formula OCR, return LaTeX code. Defaults to false.
 - `do_picture_classification` (bool): If enabled, classify pictures in documents. Defaults to false.
 - `do_picture_description` (bool): If enabled, describe pictures in documents. Defaults to false.
-- `do_document_enhancement` (bool): If enabled, apply document enhancement with OCR. Defaults to false.
-- `enable_character_encoding_fix` (bool): If enabled, fix character encoding errors in text. Only works when do_document_enhancement is True. Defaults to false.
 - `picture_description_area_threshold` (float): Minimum percentage of the area for a picture to be processed with the models. Defaults to 0.05.
-- `picture_description_local` (dict): Options for running a local vision-language model in the picture description. The parameters refer to a model hosted on Hugging Face. This parameter is mutually exclusive with picture_description_api.
-- `picture_description_api` (dict): API details for using a vision-language model in the picture description. This parameter is mutually exclusive with picture_description_local.
+- `picture_description_local` (dict): Options for running a local vision-language model in the picture description. The parameters refer to a model hosted on Hugging Face. This parameter is mutually exclusive with `picture_description_api`.
+- `picture_description_api` (dict): API details for using a vision-language model in the picture description. This parameter is mutually exclusive with `picture_description_local`.
 - `include_images` (bool): If enabled, images will be extracted from the document. Defaults to false.
 - `images_scale` (float): Scale factor for images. Defaults to 2.0.
 
@@ -37,7 +34,7 @@ On top of the source of file (see below), both endpoints support the same parame
 
 ### Source endpoint
 
-The endpoint is `/v1alpha/convert/source`, listening for POST requests of JSON payloads.
+The endpoint is `/v1/convert/source`, listening for POST requests of JSON payloads.
 
 On top of the above parameters, you must send the URL(s) of the document you want process with either the `http_sources` or `file_sources` fields.
 The first is fetching URL(s) (optionally using with extra headers), the second allows to provide documents as base64-encoded strings.
@@ -68,7 +65,6 @@ Simple payload example:
     "pdf_backend": "dlparse_v2",
     "table_mode": "fast",
     "abort_on_error": false,
-    "return_as_file": false,
   },
   "http_sources": [{"url": "https://arxiv.org/pdf/2206.01062"}]
 }
@@ -82,7 +78,7 @@ Simple payload example:
 
 ```sh
 curl -X 'POST' \
-  'http://localhost:5001/v1alpha/convert/source' \
+  'http://localhost:5001/v1/convert/source' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -111,7 +107,6 @@ curl -X 'POST' \
     "pdf_backend": "dlparse_v2",
     "table_mode": "fast",
     "abort_on_error": false,
-    "return_as_file": false,
     "do_table_structure": true,
     "include_images": true,
     "images_scale": 2
@@ -129,7 +124,7 @@ curl -X 'POST' \
 import httpx
 
 async_client = httpx.AsyncClient(timeout=60.0)
-url = "http://localhost:5001/v1alpha/convert/source"
+url = "http://localhost:5001/v1/convert/source"
 payload = {
   "options": {
     "from_formats": ["docx", "pptx", "html", "image", "pdf", "asciidoc", "md", "xlsx"],
@@ -142,7 +137,6 @@ payload = {
     "pdf_backend": "dlparse_v2",
     "table_mode": "fast",
     "abort_on_error": False,
-    "return_as_file": False,
   },
   "http_sources": [{"url": "https://arxiv.org/pdf/2206.01062"}]
 }
@@ -181,7 +175,7 @@ cat <<EOF > /tmp/request_body.json
 EOF
 
 # 3. POST the request to the docling service
-curl -X POST "localhost:5001/v1alpha/convert/source" \
+curl -X POST "localhost:5001/v1/convert/source" \
      -H "Content-Type: application/json" \
      -d @/tmp/request_body.json
 ```
@@ -190,14 +184,14 @@ curl -X POST "localhost:5001/v1alpha/convert/source" \
 
 ### File endpoint
 
-The endpoint is: `/v1alpha/convert/file`, listening for POST requests of Form payloads (necessary as the files are sent as multipart/form data). You can send one or multiple files.
+The endpoint is: `/v1/convert/file`, listening for POST requests of Form payloads (necessary as the files are sent as multipart/form data). You can send one or multiple files.
 
 <details>
 <summary>CURL example:</summary>
 
 ```sh
 curl -X 'POST' \
-  'http://127.0.0.1:5001/v1alpha/convert/file' \
+  'http://127.0.0.1:5001/v1/convert/file' \
   -H 'accept: application/json' \
   -H 'Content-Type: multipart/form-data' \
   -F 'ocr_engine=easyocr' \
@@ -213,7 +207,6 @@ curl -X 'POST' \
   -F 'abort_on_error=false' \
   -F 'to_formats=md' \
   -F 'to_formats=text' \
-  -F 'return_as_file=false' \
   -F 'do_ocr=true'
 ```
 
@@ -226,7 +219,7 @@ curl -X 'POST' \
 import httpx
 
 async_client = httpx.AsyncClient(timeout=60.0)
-url = "http://localhost:5001/v1alpha/convert/file"
+url = "http://localhost:5001/v1/convert/file"
 parameters = {
 "from_formats": ["docx", "pptx", "html", "image", "pdf", "asciidoc", "md", "xlsx"],
 "to_formats": ["md", "json", "html", "text", "doctags"],
@@ -238,7 +231,6 @@ parameters = {
 "pdf_backend": "dlparse_v2",
 "table_mode": "fast",
 "abort_on_error": False,
-"return_as_file": False
 }
 
 current_dir = os.path.dirname(__file__)
@@ -290,88 +282,44 @@ The api option is specified with:
 
 Example URLs are:
 
-- `http://localhost:8000/v1/chat/completions` for the local vllm api, with example `params`:
+- `http://localhost:8000/v1/chat/completions` for the local vllm api, with example `picture_description_api`:
   - the `HuggingFaceTB/SmolVLM-256M-Instruct` model
 
     ```json
     {
+      "url": "http://localhost:8000/v1/chat/completions",
+      "params": {
         "model": "HuggingFaceTB/SmolVLM-256M-Instruct",
         "max_completion_tokens": 200,
+      }
     }
     ```
-  
+
   - the `ibm-granite/granite-vision-3.2-2b` model
 
     ```json
     {
+      "url": "http://localhost:8000/v1/chat/completions",
+      "params": {
         "model": "ibm-granite/granite-vision-3.2-2b",
         "max_completion_tokens": 200,
+      }
     }
     ```
 
-- `http://localhost:11434/v1/chat/completions` for the local ollama api, with example `params`:
+- `http://localhost:11434/v1/chat/completions` for the local Ollama api, with example `picture_description_api`:
   - the `granite3.2-vision:2b` model
 
     ```json
     {
+      "url": "http://localhost:11434/v1/chat/completions",
+      "params": {
         "model": "granite3.2-vision:2b"
+      }
     }
-    ```  
+    ```
 
 Note that when using `picture_description_api`, the server must be launched with `DOCLING_SERVE_ENABLE_REMOTE_SERVICES=true`.
-
-### Picture annotation options
-
-When picture annotation is activated, users can choose between different models for annotating images in documents:
-
-#### Local Model (Default)
-Uses the built-in local vision-language model.
-
-#### RunPod Model
-Uses a model hosted on RunPod with OpenAI-compatible API. Configuration:
-
-```jsonc
-{
-  "picture_annotation": {
-    "model_type": "runpod",
-    "runpod_config": {
-      "api_key": "your_runpod_api_key",  // Can also be set via RUNPOD_API_KEY env var
-      "worker_id": "your_worker_id",     // Can also be set via RUNPOD_WORKER env var  
-      "model": "Qwen/Qwen2.5-VL-3B-Instruct",  // Can also be set via RUNPOD_MODEL env var
-      "prompt": "اوصفلي الصورة دي وصف رياضي دقيق جداً جداً وخليك دقيق لاكتر درجه ممكنه",
-      "temperature": 0.6
-    }
-  }
-}
-```
-
-#### OpenAI Model  
-Uses OpenAI's vision models like GPT-4V. Configuration:
-
-```jsonc
-{
-  "picture_annotation": {
-    "model_type": "openai", 
-    "openai_config": {
-      "api_key": "your_openai_api_key",  // Can also be set via OPENAI_API_KEY env var
-      "model": "gpt-4-vision-preview",
-      "prompt": "Describe this image in detail with mathematical precision.",
-      "temperature": 0.6
-    }
-  }
-}
-```
-
-#### Environment Variables
-
-For convenience, you can set these environment variables:
-
-- `RUNPOD_API_KEY`: Your RunPod API key
-- `RUNPOD_WORKER`: Your RunPod worker ID  
-- `RUNPOD_MODEL`: Model name to use (default: "Qwen/Qwen2.5-VL-3B-Instruct")
-- `OPENAI_API_KEY`: Your OpenAI API key
-
-When these are set, you can use simplified configurations or omit the config entirely and just specify the model type.
 
 ## Response format
 
@@ -400,19 +348,19 @@ The response can be a JSON Document or a File.
   `processing_time` is the Docling processing time in seconds, and `timings` (when enabled in the backend) provides the detailed
   timing of all the internal Docling components.
 
-- If you set the parameter `return_as_file` to True, the response will be a zip file.
-- If multiple files are generated (multiple inputs, or one input but multiple outputs with `return_as_file` True), the response will be a zip file.
+- If you set the parameter `target` to the zip mode, the response will be a zip file.
+- If multiple files are generated (multiple inputs, or one input but multiple outputs with the zip target mode), the response will be a zip file.
 
 ## Asynchronous API
 
-Both `/v1alpha/convert/source` and `/v1alpha/convert/file` endpoints are available as asynchronous variants.
+Both `/v1/convert/source` and `/v1/convert/file` endpoints are available as asynchronous variants.
 The advantage of the asynchronous endpoints is the possible to interrupt the connection, check for the progress update and fetch the result.
-This approach is more resilient against network stabilities and allows the client application logic to easily interleave conversion with other tasks.
+This approach is more resilient against network instabilities and allows the client application logic to easily interleave conversion with other tasks.
 
 Launch an asynchronous conversion with:
 
-- `POST /v1alpha/convert/source/async` when providing the input as sources.
-- `POST /v1alpha/convert/file/async` when providing the input as multipart-form files.
+- `POST /v1/convert/source/async` when providing the input as sources.
+- `POST /v1/convert/file/async` when providing the input as multipart-form files.
 
 The response format is a task detail:
 
@@ -429,7 +377,7 @@ The response format is a task detail:
 
 For checking the progress of the conversion task and wait for its completion, use the endpoint:
 
-- `GET /v1alpha/status/poll/{task_id}`
+- `GET /v1/status/poll/{task_id}`
 
 <details>
 <summary>Example waiting loop:</summary>
@@ -454,9 +402,9 @@ while task["task_status"] not in ("success", "failure"):
 ### Subscribe with websockets
 
 Using websocket you can get the client application being notified about updates of the conversion task.
-To start the websocker connection, use the endpoint:
+To start the websocket connection, use the endpoint:
 
-- `/v1alpha/status/ws/{task_id}`
+- `/v1/status/ws/{task_id}`
 
 Websocket messages are JSON object with the following structure:
 
@@ -469,12 +417,12 @@ Websocket messages are JSON object with the following structure:
 ```
 
 <details>
-<summary>Example websocker usage:</summary>
+<summary>Example websocket usage:</summary>
 
 ```python
 from websockets.sync.client import connect
 
-uri = f"ws://{base_url}/v1alpha/status/ws/{task['task_id']}"
+uri = f"ws://{base_url}/v1/status/ws/{task['task_id']}"
 with connect(uri) as websocket:
     for message in websocket:
         try:
@@ -493,4 +441,4 @@ with connect(uri) as websocket:
 
 When the task is completed, the result can be fetched with the endpoint:
 
-- `GET /v1alpha/result/{task_id}`
+- `GET /v1/result/{task_id}`
