@@ -1,0 +1,164 @@
+# Multi-stage Dockerfile for Docling Serve with GPU CUDA 12.8, UI, and EasyOCR
+# Base on NVIDIA CUDA runtime for GPU support
+ARG CUDA_VERSION=12.8
+ARG UBUNTU_VERSION=22.04
+ARG BASE_IMAGE=nvidia/cuda:${CUDA_VERSION}-runtime-ubuntu${UBUNTU_VERSION}
+
+ARG UV_VERSION=0.8.3
+ARG UV_SYNC_EXTRA_ARGS=""
+
+FROM ${BASE_IMAGE} AS docling-gpu-base
+
+###################################################################################################
+# OS Layer - Enhanced for GPU and EasyOCR                                                       #
+###################################################################################################
+
+# Install system dependencies
+USER root
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install basic dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    git \
+    wget \
+    unzip \
+    software-properties-common \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python 3.12
+RUN add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get update && \
+    apt-get install -y \
+    python3.12 \
+    python3.12-dev \
+    python3.12-distutils \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create symbolic links for python
+RUN ln -sf /usr/bin/python3.12 /usr/bin/python3 && \
+    ln -sf /usr/bin/python3.12 /usr/bin/python
+
+# Install system packages for OCR and document processing
+RUN apt-get update && apt-get install -y \
+    # Tesseract OCR
+    tesseract-ocr \
+    tesseract-ocr-ara \
+    tesseract-ocr-eng \
+    libtesseract-dev \
+    # Image processing libraries
+    libopencv-dev \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    # Font support
+    fontconfig \
+    fonts-dejavu-core \
+    fonts-noto \
+    fonts-noto-cjk \
+    fonts-noto-color-emoji \
+    # Additional dependencies
+    libmagic1 \
+    poppler-utils \
+    libpoppler-dev \
+    libfreetype6-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libwebp-dev \
+    libtiff5-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set environment variables for Tesseract
+ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata/
+
+# Create app user
+RUN groupadd -r appuser && useradd -r -g appuser -u 1001 appuser
+
+# Create application directories
+RUN mkdir -p /opt/app-root/src/.cache/docling/models && \
+    chown -R appuser:appuser /opt/app-root
+
+FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv_stage
+
+###################################################################################################
+# Docling GPU layer with UI and EasyOCR                                                         #
+###################################################################################################
+
+FROM docling-gpu-base
+
+USER appuser
+WORKDIR /opt/app-root/src
+
+ENV \
+    OMP_NUM_THREADS=4 \
+    LANG=en_US.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    PYTHONIOENCODING=utf-8 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/opt/app-root \
+    DOCLING_SERVE_ARTIFACTS_PATH=/opt/app-root/src/.cache/docling/models \
+    DOCLING_SERVE_ENABLE_UI=1 \
+    CUDA_VISIBLE_DEVICES=all \
+    NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+ARG UV_SYNC_EXTRA_ARGS
+
+# Install Python dependencies with GPU, UI, and EasyOCR support
+RUN --mount=from=uv_stage,source=/uv,target=/bin/uv \
+    --mount=type=cache,target=/opt/app-root/src/.cache/uv,uid=1001 \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    umask 002 && \
+    UV_SYNC_ARGS="--frozen --no-install-project --no-dev --extra ui --extra easyocr --extra tesserocr" && \
+    uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-extra flash-attn && \
+    FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE uv sync ${UV_SYNC_ARGS} ${UV_SYNC_EXTRA_ARGS} --no-build-isolation-package=flash-attn
+
+# Download pre-trained models including EasyOCR models
+ARG MODELS_LIST="layout tableformer picture_classifier easyocr"
+
+RUN echo "Downloading AI models..." && \
+    HF_HUB_DOWNLOAD_TIMEOUT="180" \
+    HF_HUB_ETAG_TIMEOUT="180" \
+    docling-tools models download -o "${DOCLING_SERVE_ARTIFACTS_PATH}" ${MODELS_LIST} && \
+    chown -R appuser:appuser ${DOCLING_SERVE_ARTIFACTS_PATH} && \
+    chmod -R g=u ${DOCLING_SERVE_ARTIFACTS_PATH}
+
+# Pre-download EasyOCR models to speed up first run
+RUN python3 -c "\
+import easyocr; \
+print('Downloading EasyOCR models...'); \
+reader = easyocr.Reader(['en', 'ar'], gpu=False); \
+print('EasyOCR models downloaded successfully!')"
+
+# Copy application code
+COPY --chown=appuser:appuser ./docling_serve ./docling_serve
+
+# Install the application
+RUN --mount=from=uv_stage,source=/uv,target=/bin/uv \
+    --mount=type=cache,target=/opt/app-root/src/.cache/uv,uid=1001 \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    umask 002 && uv sync --frozen --no-dev --extra ui --extra easyocr --extra tesserocr ${UV_SYNC_EXTRA_ARGS}
+
+# Create directories for logs and cache
+RUN mkdir -p /opt/app-root/src/logs /opt/app-root/src/data && \
+    chown -R appuser:appuser /opt/app-root/src/logs /opt/app-root/src/data
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:5001/health || exit 1
+
+# Expose port
+EXPOSE 5001
+
+# Set the default command
+CMD ["docling-serve", "run", "--enable-ui", "--host", "0.0.0.0", "--port", "5001"]

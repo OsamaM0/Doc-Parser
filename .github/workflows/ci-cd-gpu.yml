@@ -1,0 +1,449 @@
+name: Build and Deploy Docker Images with GPU Support
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force build all images'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  DOCKER_HUB_REGISTRY: docker.io
+  GHCR_REGISTRY: ghcr.io
+  QUAY_REGISTRY: quay.io
+  IMAGE_NAME: docling-serve
+  DOCKERFILE: Containerfile
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Job 1: Build and Push to Docker Hub (Priority #1)
+  build-dockerhub:
+    name: Build and Push to Docker Hub
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - name: "latest"
+            suffix: ""
+            build_args: |
+              UV_SYNC_EXTRA_ARGS=--all-extras --no-extra flash-attn
+            platforms: linux/amd64,linux/arm64
+            description: "Latest with UI and EasyOCR support"
+          - name: "gpu-cu128"
+            suffix: "-gpu-cu128"
+            build_args: |
+              UV_SYNC_EXTRA_ARGS=--no-group pypi --group cu128 --all-extras
+            platforms: linux/amd64
+            description: "CUDA 12.8 with UI and EasyOCR support"
+          - name: "cpu"
+            suffix: "-cpu"
+            build_args: |
+              UV_SYNC_EXTRA_ARGS=--no-group pypi --group cpu --all-extras --no-extra flash-attn
+            platforms: linux/amd64,linux/arm64
+            description: "CPU-only with UI and EasyOCR support"
+    
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+
+    steps:
+      - name: Free up disk space
+        run: |
+          echo "=== Before cleanup ==="
+          df -h
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /usr/local/share/powershell /usr/share/swift /usr/local/.ghcup
+          sudo docker system prune -af --volumes
+          echo "=== After cleanup ==="
+          df -h
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_HUB_REGISTRY }}
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ matrix.variant.name }},enable={{is_default_branch}}
+            type=raw,value=${{ matrix.variant.name }}-{{sha}},enable={{is_default_branch}}
+            type=ref,event=branch,suffix=${{ matrix.variant.suffix }}
+            type=ref,event=pr,suffix=${{ matrix.variant.suffix }}
+            type=semver,pattern={{version}},suffix=${{ matrix.variant.suffix }}
+            type=semver,pattern={{major}}.{{minor}},suffix=${{ matrix.variant.suffix }}
+            type=semver,pattern={{major}},suffix=${{ matrix.variant.suffix }}
+          labels: |
+            org.opencontainers.image.title=Docling Serve ${{ matrix.variant.description }}
+            org.opencontainers.image.description=${{ matrix.variant.description }}
+            org.opencontainers.image.vendor=Docling Project
+            org.opencontainers.image.licenses=MIT
+
+      - name: Build and push to Docker Hub
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          platforms: ${{ matrix.variant.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.variant.build_args }}
+          cache-from: type=gha,scope=${{ matrix.variant.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.variant.name }}
+          provenance: false
+          sbom: false
+
+      - name: Generate SBOM and attestation
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Docker Scout (Security Analysis)
+        if: github.event_name != 'pull_request'
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ matrix.variant.name }}
+          only-severities: critical,high
+          exit-code: false
+
+  # Job 2: Build and Push to GHCR (Secondary)
+  build-ghcr:
+    name: Build and Push to GHCR
+    runs-on: ubuntu-latest
+    needs: build-dockerhub
+    if: github.event_name != 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - name: "latest"
+            suffix: ""
+            build_args: |
+              UV_SYNC_EXTRA_ARGS=--all-extras --no-extra flash-attn
+            platforms: linux/amd64,linux/arm64
+          - name: "gpu-cu128"
+            suffix: "-gpu-cu128"
+            build_args: |
+              UV_SYNC_EXTRA_ARGS=--no-group pypi --group cu128 --all-extras
+            platforms: linux/amd64
+          - name: "cpu"
+            suffix: "-cpu"
+            build_args: |
+              UV_SYNC_EXTRA_ARGS=--no-group pypi --group cpu --all-extras --no-extra flash-attn
+            platforms: linux/amd64,linux/arm64
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Free up disk space
+        run: |
+          df -h
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /usr/local/share/powershell /usr/share/swift /usr/local/.ghcup
+          sudo docker system prune -af --volumes
+          df -h
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for GHCR
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.GHCR_REGISTRY }}/${{ github.repository }}
+          tags: |
+            type=raw,value=${{ matrix.variant.name }},enable={{is_default_branch}}
+            type=ref,event=branch,suffix=${{ matrix.variant.suffix }}
+            type=semver,pattern={{version}},suffix=${{ matrix.variant.suffix }}
+
+      - name: Build and push to GHCR
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          platforms: ${{ matrix.variant.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.variant.build_args }}
+          cache-from: type=gha,scope=${{ matrix.variant.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.variant.name }}
+
+  # Job 3: Build and Push to Quay.io (Tertiary)
+  build-quay:
+    name: Build and Push to Quay.io
+    runs-on: ubuntu-latest
+    needs: build-ghcr
+    if: github.event_name != 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - name: "latest"
+            suffix: ""
+            build_args: |
+              UV_SYNC_EXTRA_ARGS=--all-extras --no-extra flash-attn
+            platforms: linux/amd64,linux/arm64
+          - name: "gpu-cu128"
+            suffix: "-gpu-cu128"
+            build_args: |
+              UV_SYNC_EXTRA_ARGS=--no-group pypi --group cu128 --all-extras
+            platforms: linux/amd64
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Free up disk space
+        run: |
+          df -h
+          sudo docker system prune -af --volumes
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.QUAY_REGISTRY }}
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_TOKEN }}
+
+      - name: Extract metadata for Quay.io
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.QUAY_REGISTRY }}/${{ secrets.QUAY_USERNAME }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ matrix.variant.name }},enable={{is_default_branch}}
+            type=ref,event=branch,suffix=${{ matrix.variant.suffix }}
+            type=semver,pattern={{version}},suffix=${{ matrix.variant.suffix }}
+
+      - name: Build and push to Quay.io
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          platforms: ${{ matrix.variant.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.variant.build_args }}
+          cache-from: type=gha,scope=${{ matrix.variant.name }}
+
+  # Job 4: Test Docker Images
+  test-images:
+    name: Test Docker Images
+    runs-on: ubuntu-latest
+    needs: build-dockerhub
+    if: github.event_name != 'pull_request'
+    strategy:
+      matrix:
+        variant: ["latest", "cpu"]
+
+    steps:
+      - name: Test Docker image
+        run: |
+          echo "Testing Docker image: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ matrix.variant }}"
+          
+          # Pull the image
+          docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ matrix.variant }}
+          
+          # Test basic functionality
+          docker run --rm -d \
+            --name docling-test-${{ matrix.variant }} \
+            -p 5001:5001 \
+            -e DOCLING_SERVE_ENABLE_UI=1 \
+            ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ matrix.variant }}
+          
+          # Wait for service to start
+          sleep 30
+          
+          # Test health endpoint
+          curl -f http://localhost:5001/health || exit 1
+          
+          # Test API endpoint
+          curl -f http://localhost:5001/docs || exit 1
+          
+          # Test UI endpoint
+          curl -f http://localhost:5001/ui || exit 1
+          
+          # Stop container
+          docker stop docling-test-${{ matrix.variant }}
+          
+          echo "✅ Docker image ${{ matrix.variant }} test passed!"
+
+  # Job 5: Create Release and Deploy Documentation
+  release:
+    name: Create Release and Deploy Docs
+    runs-on: ubuntu-latest
+    needs: [build-dockerhub, test-images]
+    if: startsWith(github.ref, 'refs/tags/v') && github.event_name != 'pull_request'
+    
+    permissions:
+      contents: write
+      packages: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          echo "# Docling Serve Release" > release_notes.md
+          echo "" >> release_notes.md
+          echo "## Docker Images Available" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Docker Hub (Primary)" >> release_notes.md
+          echo "- \`${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest\` - Latest with UI and EasyOCR support" >> release_notes.md
+          echo "- \`${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:gpu-cu128\` - CUDA 12.8 with UI and EasyOCR support" >> release_notes.md
+          echo "- \`${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:cpu\` - CPU-only with UI and EasyOCR support" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### GHCR (Secondary)" >> release_notes.md
+          echo "- \`${{ env.GHCR_REGISTRY }}/${{ github.repository }}:latest\`" >> release_notes.md
+          echo "- \`${{ env.GHCR_REGISTRY }}/${{ github.repository }}:gpu-cu128\`" >> release_notes.md
+          echo "- \`${{ env.GHCR_REGISTRY }}/${{ github.repository }}:cpu\`" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Quay.io (Tertiary)" >> release_notes.md
+          echo "- \`${{ env.QUAY_REGISTRY }}/${{ secrets.QUAY_USERNAME }}/${{ env.IMAGE_NAME }}:latest\`" >> release_notes.md
+          echo "- \`${{ env.QUAY_REGISTRY }}/${{ secrets.QUAY_USERNAME }}/${{ env.IMAGE_NAME }}:gpu-cu128\`" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## Quick Start" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "\`\`\`bash" >> release_notes.md
+          echo "# CPU version" >> release_notes.md
+          echo "docker run -p 5001:5001 -e DOCLING_SERVE_ENABLE_UI=1 ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:cpu" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "# GPU version (requires NVIDIA Docker)" >> release_notes.md
+          echo "docker run --gpus all -p 5001:5001 -e DOCLING_SERVE_ENABLE_UI=1 ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:gpu-cu128" >> release_notes.md
+          echo "\`\`\`" >> release_notes.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Job 6: Cleanup old images
+  cleanup:
+    name: Cleanup Old Images
+    runs-on: ubuntu-latest
+    needs: [build-dockerhub, build-ghcr]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    
+    permissions:
+      packages: write
+
+    steps:
+      - name: Delete old GHCR images
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: ${{ env.IMAGE_NAME }}
+          package-type: container
+          min-versions-to-keep: 10
+          delete-only-untagged-versions: true
+
+  # Job 7: Security Scan
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build-dockerhub
+    if: github.event_name != 'pull_request'
+    
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Job 8: Notify on completion
+  notify:
+    name: Notify Completion
+    runs-on: ubuntu-latest
+    needs: [build-dockerhub, build-ghcr, build-quay, test-images]
+    if: always() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    
+    steps:
+      - name: Notify success
+        if: needs.build-dockerhub.result == 'success'
+        run: |
+          echo "🎉 Successfully built and pushed Docker images!"
+          echo "📦 Docker Hub: ${{ secrets.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}"
+          echo "🏷️ Available tags: latest, gpu-cu128, cpu"
+          echo "🚀 Ready for deployment!"
+
+      - name: Notify failure
+        if: needs.build-dockerhub.result == 'failure'
+        run: |
+          echo "❌ Build failed! Please check the logs."
+          exit 1
