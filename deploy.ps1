@@ -143,7 +143,7 @@ function Get-LatestImages {
         }
         catch {
             Write-Warning "Failed to pull from Docker Hub. Building locally..."
-            docker-compose -f docker-compose.gpu.yml build docling-serve-gpu
+            docker build -f Containerfile.gpu --build-arg UV_SYNC_EXTRA_ARGS="--group cu128 --extra ui --extra easyocr" -t docling-serve-gpu .
         }
     }
     else {

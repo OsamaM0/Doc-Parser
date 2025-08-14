@@ -17,13 +17,13 @@ echo "Using Docker Hub username: $DOCKER_HUB_USERNAME"
 echo ""
 echo "📦 Building GPU CUDA 12.8 image..."
 docker build -f Containerfile.gpu -t test-gpu \
-    --build-arg UV_SYNC_EXTRA_ARGS="--no-group pypi --group cu128 --extra ui --extra easyocr" .
+    --build-arg UV_SYNC_EXTRA_ARGS="--group cu128 --extra ui --extra easyocr" .
 
 # Test 2: Build CPU image
 echo ""
 echo "📦 Building CPU image..."
 docker build -f Containerfile -t test-cpu \
-    --build-arg UV_SYNC_EXTRA_ARGS="--no-group pypi --group cpu --extra ui --extra easyocr --no-extra flash-attn" .
+    --build-arg UV_SYNC_EXTRA_ARGS="--group cpu --extra ui --extra easyocr" .
 
 # Test 3: Quick functionality test
 echo ""

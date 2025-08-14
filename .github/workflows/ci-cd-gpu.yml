@@ -42,19 +42,19 @@ jobs:
           - name: "latest"
             suffix: ""
             build_args: |
-              UV_SYNC_EXTRA_ARGS=--all-extras --no-extra flash-attn
+              UV_SYNC_EXTRA_ARGS=--extra ui --extra easyocr
             platforms: linux/amd64,linux/arm64
             description: "Latest with UI and EasyOCR support"
           - name: "gpu-cu128"
             suffix: "-gpu-cu128"
             build_args: |
-              UV_SYNC_EXTRA_ARGS=--no-group pypi --group cu128 --all-extras
+              UV_SYNC_EXTRA_ARGS=--group cu128 --extra ui --extra easyocr
             platforms: linux/amd64
             description: "CUDA 12.8 with UI and EasyOCR support"
           - name: "cpu"
             suffix: "-cpu"
             build_args: |
-              UV_SYNC_EXTRA_ARGS=--no-group pypi --group cpu --all-extras --no-extra flash-attn
+              UV_SYNC_EXTRA_ARGS=--group cpu --extra ui --extra easyocr
             platforms: linux/amd64,linux/arm64
             description: "CPU-only with UI and EasyOCR support"
     
@@ -158,17 +158,17 @@ jobs:
           - name: "latest"
             suffix: ""
             build_args: |
-              UV_SYNC_EXTRA_ARGS=--all-extras --no-extra flash-attn
+              UV_SYNC_EXTRA_ARGS=--extra ui --extra easyocr
             platforms: linux/amd64,linux/arm64
           - name: "gpu-cu128"
             suffix: "-gpu-cu128"
             build_args: |
-              UV_SYNC_EXTRA_ARGS=--no-group pypi --group cu128 --all-extras
+              UV_SYNC_EXTRA_ARGS=--group cu128 --extra ui --extra easyocr
             platforms: linux/amd64
           - name: "cpu"
             suffix: "-cpu"
             build_args: |
-              UV_SYNC_EXTRA_ARGS=--no-group pypi --group cpu --all-extras --no-extra flash-attn
+              UV_SYNC_EXTRA_ARGS=--group cpu --extra ui --extra easyocr
             platforms: linux/amd64,linux/arm64
 
     permissions:
@@ -234,12 +234,12 @@ jobs:
           - name: "latest"
             suffix: ""
             build_args: |
-              UV_SYNC_EXTRA_ARGS=--all-extras --no-extra flash-attn
+              UV_SYNC_EXTRA_ARGS=--extra ui --extra easyocr
             platforms: linux/amd64,linux/arm64
           - name: "gpu-cu128"
             suffix: "-gpu-cu128"
             build_args: |
-              UV_SYNC_EXTRA_ARGS=--no-group pypi --group cu128 --all-extras
+              UV_SYNC_EXTRA_ARGS=--group cu128 --extra ui --extra easyocr
             platforms: linux/amd64
 
     permissions:
